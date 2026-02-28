@@ -23,3 +23,10 @@ serviceAccountKey.json
 .env.*
 !.env.example
 
+
+# Env secrets
+.env
+**/.env
+.env.*
+!.env.example
+

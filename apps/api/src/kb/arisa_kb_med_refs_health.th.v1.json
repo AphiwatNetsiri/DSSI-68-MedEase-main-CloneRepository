@@ -1,0 +1,261 @@
+[
+  {
+    "id": "dengue_what_is_wer2012",
+    "topic": "dengue",
+    "title": "Dengue คืออะไร และทำไมถึงอันตราย (ภาพรวม)",
+    "tags": [
+      "dengue",
+      "overview",
+      "vector",
+      "mosquito"
+    ],
+    "text": "ไข้เดงกี (Dengue) เป็นโรคติดเชื้อไวรัสที่มียุงเป็นพาหะ พบมากในเขตร้อน/กึ่งร้อน ปัจจุบันมีการระบาดเพิ่มขึ้นโดยเฉพาะในพื้นที่เมืองและชานเมือง และเป็นปัญหาสาธารณสุขสำคัญในหลายประเทศ\nมีเชื้อไวรัส 4 สายพันธุ์ (serotypes) การเป็นครั้งหนึ่งจะภูมิคุ้มกันตลอดชีวิตต่อสายพันธุ์นั้น แต่การติดเชื้อสายพันธุ์อื่นในครั้งถัดไปเพิ่มความเสี่ยงต่อ “ไข้เดงกีรุนแรง”",
+    "source": "WHO Weekly Epidemiological Record (No.8, 24 Feb 2012) – Dengue factsheet",
+    "updatedAt": "2026-02-28",
+    "severity": "info",
+    "redFlags": []
+  },
+  {
+    "id": "dengue_transmission_wer2012",
+    "topic": "dengue",
+    "title": "การติดต่อและพาหะ (Aedes aegypti)",
+    "tags": [
+      "dengue",
+      "transmission",
+      "aedes",
+      "prevention"
+    ],
+    "text": "ยุงลายบ้าน (Aedes aegypti) เป็นพาหะหลักของเดงกี ติดต่อสู่คนโดยยุงเพศเมียที่ติดเชื้อกัด หลังยุงได้รับเชื้อจะฟักตัวในยุงประมาณ 4–10 วัน แล้วแพร่เชื้อได้ตลอดชีวิต\nผู้ป่วยเป็นแหล่งแพร่เชื้อให้ยุงได้ราว 4–5 วัน (อาจถึง 12 วัน) หลังเริ่มมีอาการ ยุงลายมักกัดตอนเช้าและก่อนค่ำ และกัดหลายคนในช่วงเดียวกัน",
+    "source": "WHO Weekly Epidemiological Record (No.8, 24 Feb 2012) – Dengue factsheet",
+    "updatedAt": "2026-02-28",
+    "severity": "info",
+    "redFlags": []
+  },
+  {
+    "id": "dengue_symptoms_wer2012",
+    "topic": "dengue",
+    "title": "อาการเดงกีที่พบบ่อย",
+    "tags": [
+      "dengue",
+      "symptoms",
+      "fever"
+    ],
+    "text": "ควรสงสัยเดงกีเมื่อ “ไข้สูง” ร่วมกับอย่างน้อย 2 ข้อ เช่น ปวดศีรษะมาก ปวดกระบอกตา ปวดเมื่อยกล้ามเนื้อ/ข้อ คลื่นไส้ อาเจียน ต่อมน้ำเหลืองโต หรือผื่น อาการมักอยู่นานราว 2–7 วัน หลังถูกยุงกัดประมาณ 4–10 วัน",
+    "source": "WHO Weekly Epidemiological Record (No.8, 24 Feb 2012) – Dengue factsheet",
+    "updatedAt": "2026-02-28",
+    "severity": "info",
+    "redFlags": []
+  },
+  {
+    "id": "dengue_warning_signs_wer2012",
+    "topic": "dengue",
+    "title": "สัญญาณอันตรายของเดงกีรุนแรง (ต้องพบแพทย์ด่วน)",
+    "tags": [
+      "dengue",
+      "warning signs",
+      "emergency"
+    ],
+    "text": "เดงกีรุนแรงอันตรายถึงชีวิตได้จากภาวะพลาสมารั่ว มีน้ำคั่ง หายใจลำบาก เลือดออกรุนแรง หรืออวัยวะล้มเหลว\nสัญญาณอันตรายมักเกิดช่วงวันที่ 3–7 หลังเริ่มป่วย (มักมาพร้อมไข้เริ่มลดลง) เช่น ปวดท้องรุนแรง อาเจียนต่อเนื่อง หายใจเร็ว เลือดออกตามเหงือก เหนื่อย/กระสับกระส่าย หรือมีเลือดในอาเจียน\nถ้ามีสัญญาณเหล่านี้ควรไปโรงพยาบาลทันที เพราะช่วง 24–48 ชั่วโมงถัดไปอาจวิกฤตได้",
+    "source": "WHO Weekly Epidemiological Record (No.8, 24 Feb 2012) – Dengue factsheet",
+    "updatedAt": "2026-02-28",
+    "severity": "high",
+    "redFlags": [
+      "ปวดท้องรุนแรง",
+      "อาเจียนต่อเนื่อง",
+      "หายใจเร็ว/หายใจลำบาก",
+      "เลือดออกผิดปกติ",
+      "ซึม/กระสับกระส่าย",
+      "อาเจียนหรือถ่ายเป็นเลือด"
+    ]
+  },
+  {
+    "id": "dengue_treatment_wer2012",
+    "topic": "dengue",
+    "title": "การดูแลรักษาเดงกี (หลักการสำคัญ)",
+    "tags": [
+      "dengue",
+      "treatment",
+      "fluids"
+    ],
+    "text": "เดงกี “ไม่มียาต้านไวรัสจำเพาะ” การดูแลเป็นการประคับประคอง โดยเฉพาะการดูแลภาวะน้ำในร่างกายให้เหมาะสม\nในเดงกีรุนแรง การรักษาโดยทีมแพทย์ที่มีประสบการณ์ช่วยลดอัตราตายได้มาก (รายงาน WHO ระบุลดจากมากกว่า ~20% เหลือน้อยกว่า ~1% เมื่อเข้าถึงการดูแลที่เหมาะสม)",
+    "source": "WHO Weekly Epidemiological Record (No.8, 24 Feb 2012) – Dengue factsheet",
+    "updatedAt": "2026-02-28",
+    "severity": "info",
+    "redFlags": []
+  },
+  {
+    "id": "dengue_prevention_wer2012",
+    "topic": "dengue",
+    "title": "การป้องกันเดงกี (กำจัดแหล่งเพาะยุง)",
+    "tags": [
+      "dengue",
+      "prevention",
+      "vector control"
+    ],
+    "text": "การป้องกันเดงกีเน้น “ควบคุมยุงพาหะ” เช่น ปิด/เท/ล้างภาชนะเก็บน้ำประจำสัปดาห์ กำจัดขยะหรือภาชนะที่มีน้ำขัง ใช้มุ้งลวด เสื้อแขนยาว สารไล่ยุง/มุ้งชุบสารเคมี และร่วมมือชุมชนเพื่อควบคุมยุงอย่างต่อเนื่อง",
+    "source": "WHO Weekly Epidemiological Record (No.8, 24 Feb 2012) – Dengue factsheet",
+    "updatedAt": "2026-02-28",
+    "severity": "info",
+    "redFlags": []
+  },
+  {
+    "id": "dengue_keyfacts_who2014",
+    "topic": "dengue",
+    "title": "Key facts เดงกี (WHO 2014)",
+    "tags": [
+      "dengue",
+      "key facts",
+      "who"
+    ],
+    "text": "เดงกีเป็นโรคไวรัสจากยุง ทำให้มีอาการคล้ายไข้หวัดใหญ่ และบางรายอาจรุนแรงถึงชีวิต (severe dengue)\nWHO ระบุว่าไม่มีการรักษาจำเพาะ แต่ “การตรวจพบเร็ว + เข้าถึงการดูแลที่เหมาะสม” ช่วยลดอัตราตายให้ต่ำกว่า 1% ได้ และการป้องกันขึ้นกับมาตรการควบคุมยุงเป็นหลัก",
+    "source": "WHO/EMRO Fact sheet (World Health Day 2014): Dengue and severe dengue",
+    "updatedAt": "2026-02-28",
+    "severity": "info",
+    "redFlags": []
+  },
+  {
+    "id": "headache_types_nhs",
+    "topic": "headache",
+    "title": "ประเภทปวดหัวที่พบบ่อย (ไมเกรน/คลัสเตอร์/ตึงเครียด/ใช้ยาเกิน)",
+    "tags": [
+      "headache",
+      "migraine",
+      "tension",
+      "cluster",
+      "medication overuse"
+    ],
+    "text": "เอกสารแนะนำผู้ป่วยระบุประเภทปวดหัวที่พบบ่อย เช่น\n- ไมเกรน: ปวดตุบ ๆ ข้างเดียว อาจคลื่นไส้ แพ้แสง/เสียง ดีขึ้นเมื่อพักในที่มืดเงียบ\n- Cluster headache: ปวดข้างเดียวร่วมกับตาแดงน้ำตาไหล/คัดจมูก\n- Tension headache: ปวดเหมือนรัดรอบหน้าผาก มักแย่ลงระหว่างวัน\n- Medication over-use headache: เกิดจากใช้ยาแก้ปวดบ่อย/ต่อเนื่อง (โดยเฉพาะกลุ่ม opioid เช่น codeine, tramadol เป็นต้น) ทำให้อาการปวดหัวเรื้อรังและแย่ลง ต้องแก้ด้วยการหยุดยาที่เป็นสาเหตุภายใต้คำแนะนำแพทย์",
+    "source": "Imperial College Healthcare NHS Trust – Emergency department: Headache advice (Published Feb 2019)",
+    "updatedAt": "2026-02-28",
+    "severity": "info",
+    "redFlags": []
+  },
+  {
+    "id": "headache_redflags_nhs",
+    "topic": "headache",
+    "title": "สัญญาณอันตรายปวดหัว (ควรกลับไปฉุกเฉิน/พบแพทย์ทันที)",
+    "tags": [
+      "headache",
+      "red flags",
+      "emergency"
+    ],
+    "text": "ควรไปฉุกเฉิน/พบแพทย์ทันที หากมีอาการร่วมกับปวดหัว เช่น\n- มีไข้สูงร่วมกับปวดหัว\n- ปวดหัวรุนแรงฉับพลันถึงจุดสูงสุดภายในไม่กี่วินาที\n- อ่อนแรง/ชาหรือความรู้สึกผิดปกติที่ใบหน้า แขน ขา หรือพูดลำบาก\n- สับสน\n- ตาแดง/ปวดตา หรือการมองเห็นเปลี่ยนไป",
+    "source": "Imperial College Healthcare NHS Trust – Emergency department: Headache advice (Published Feb 2019)",
+    "updatedAt": "2026-02-28",
+    "severity": "high",
+    "redFlags": [
+      "ปวดหัวรุนแรงฉับพลัน",
+      "อ่อนแรง/ชาครึ่งซีก",
+      "พูดลำบาก",
+      "สับสน",
+      "ตาแดงปวดตา/ตามัว",
+      "ไข้สูงร่วมปวดหัว"
+    ]
+  },
+  {
+    "id": "headache_selfcare_nhs",
+    "topic": "headache",
+    "title": "ดูแลตัวเองเมื่อปวดหัว (แนวทางพื้นฐาน)",
+    "tags": [
+      "headache",
+      "self-care",
+      "hydration",
+      "sleep"
+    ],
+    "text": "คำแนะนำพื้นฐานเพื่อลด/บรรเทาปวดหัว ได้แก่ ดื่มน้ำให้พอ ลดคาเฟอีนและแอลกอฮอล์ นอนให้พอ ตรวจสายตาให้เหมาะสม ลดเวลาหน้าจอ ลดความเครียด ออกกำลังกายสม่ำเสมอ และตรวจอุปกรณ์ตรวจคาร์บอนมอนอกไซด์หากใช้หม้อต้มแก๊สในบ้าน",
+    "source": "Imperial College Healthcare NHS Trust – Emergency department: Headache advice (Published Feb 2019)",
+    "updatedAt": "2026-02-28",
+    "severity": "info",
+    "redFlags": []
+  },
+  {
+    "id": "fever_u5_traffic_light",
+    "topic": "fever_u5",
+    "title": "ไข้ในเด็กอายุต่ำกว่า 5 ปี: ระบบประเมินความเสี่ยง (Traffic light)",
+    "tags": [
+      "fever",
+      "child",
+      "traffic light",
+      "risk"
+    ],
+    "text": "แนวทางคุณภาพของ NICE ระบุว่า เด็กอายุต่ำกว่า 5 ปีที่มีไข้ไม่ทราบสาเหตุ ควรถูกประเมิน “ความเสี่ยงโรครุนแรง” ด้วยระบบสัญญาณไฟ (traffic light) แบ่งเป็นความเสี่ยงสูง/ปานกลาง/ต่ำ โดยดูจากอาการและสัญญาณชีพ เพื่อช่วยตัดสินใจการดูแลและการส่งต่อ",
+    "source": "NICE Quality Standard QS64: Fever in under 5s (updated 27 Jul 2022)",
+    "updatedAt": "2026-02-28",
+    "severity": "info",
+    "redFlags": []
+  },
+  {
+    "id": "fever_u5_vital_signs",
+    "topic": "fever_u5",
+    "title": "ไข้เด็ก <5 ปี: สิ่งที่ควรวัดเมื่อพบแพทย์",
+    "tags": [
+      "fever",
+      "child",
+      "vital signs"
+    ],
+    "text": "NICE แนะนำว่าเมื่อสงสัยเด็ก <5 ปีมีไข้และพบผู้เชี่ยวชาญแบบเจอตัว ควรวัด/บันทึกอุณหภูมิ ชีพจร อัตราการหายใจ และเวลา capillary refill รวมถึงประเมินภาวะขาดน้ำ/ช็อก เพื่อคัดกรองความเสี่ยงโรครุนแรง",
+    "source": "NICE Quality Standard QS64: Fever in under 5s (updated 27 Jul 2022)",
+    "updatedAt": "2026-02-28",
+    "severity": "info",
+    "redFlags": []
+  },
+  {
+    "id": "fever_u5_safetynet_homecare",
+    "topic": "fever_u5",
+    "title": "Safety‑net advice: ดูแลเด็กมีไข้ที่บ้านและเฝ้าระวังอะไร",
+    "tags": [
+      "fever",
+      "child",
+      "safety net",
+      "home care"
+    ],
+    "text": "หากแพทย์ประเมินว่าเด็กดูแลที่บ้านได้ ควรให้ “safety‑net advice” แก่ผู้ปกครอง เช่น\n- ให้เด็กดื่มน้ำสม่ำเสมอ (ทารกที่กินนมแม่: นมแม่เหมาะที่สุด)\n- สังเกตสัญญาณขาดน้ำ เช่น กระหม่อมบุ๋ม ปากแห้ง ตาลึก ไม่มีน้ำตา ดูซึม/ดูไม่สบายมาก\n- สอนวิธีดูผื่น “กดไม่จาง” (non‑blanching rash)\n- ตรวจดูเด็กตอนกลางคืน และหลีกเลี่ยงไปสถานรับเลี้ยง/โรงเรียนขณะยังมีไข้",
+    "source": "NICE Quality Standard QS64: Fever in under 5s – Quality statement 4 (Safety net advice)",
+    "updatedAt": "2026-02-28",
+    "severity": "info",
+    "redFlags": []
+  },
+  {
+    "id": "fever_u5_when_to_seek_help",
+    "topic": "fever_u5",
+    "title": "เมื่อไหร่ควรขอความช่วยเหลือเพิ่ม (เด็กมีไข้ <5 ปี)",
+    "tags": [
+      "fever",
+      "child",
+      "seek help",
+      "red flags"
+    ],
+    "text": "หลังได้รับคำแนะนำจากบุคลากรสุขภาพ ผู้ปกครองควรขอคำแนะนำ/พบแพทย์อีกครั้ง หาก:\n- เด็กมีอาการชัก\n- มีผื่นกดไม่จาง\n- ผู้ปกครองรู้สึกว่าเด็ก “แย่ลงกว่าเดิม” หรือกังวลมากขึ้น\n- ไข้ต่อเนื่องตั้งแต่ 5 วันขึ้นไป\n- ผู้ปกครองเครียด/ไม่มั่นใจว่าจะดูแลต่อได้",
+    "source": "NICE Quality Standard QS64: Fever in under 5s – Safety net advice (recommendation 1.7.3)",
+    "updatedAt": "2026-02-28",
+    "severity": "high",
+    "redFlags": [
+      "ชัก",
+      "ผื่นกดไม่จาง",
+      "อาการแย่ลง",
+      "ไข้ ≥5 วัน",
+      "ผู้ปกครองดูแลไม่ไหว"
+    ]
+  },
+  {
+    "id": "arisa_health_disclaimer",
+    "topic": "safety",
+    "title": "ข้อจำกัดของคำแนะนำ: ไม่ใช่การวินิจฉัย",
+    "tags": [
+      "safety",
+      "disclaimer",
+      "triage"
+    ],
+    "text": "Arisa ให้ข้อมูลสุขภาพเพื่อการดูแลเบื้องต้นและช่วยตัดสินใจ “ควรไปพบแพทย์เมื่อไหร่” ไม่ใช่การวินิจฉัยโรค\nหากมีอาการรุนแรงหรือสัญญาณอันตราย (เช่น หายใจลำบาก เจ็บหน้าอกรุนแรง ซึมลง ชัก เลือดออกผิดปกติ) ควรไปโรงพยาบาล/ฉุกเฉินทันที",
+    "source": "MedEase KB – Safety policy (derived from NICE/WHO patient-safety principles)",
+    "updatedAt": "2026-02-28",
+    "severity": "high",
+    "redFlags": [
+      "หายใจลำบาก",
+      "เจ็บหน้าอก",
+      "ซึมลงมาก",
+      "ชัก",
+      "เลือดออกผิดปกติ"
+    ]
+  }
+]

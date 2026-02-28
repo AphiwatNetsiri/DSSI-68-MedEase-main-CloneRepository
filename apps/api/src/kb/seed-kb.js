@@ -45,7 +45,6 @@ if (ARGS.help) {
   process.exit(0);
 }
 
-
 const ARISA_KB_COLLECTION = (ARGS.collection || process.env.ARISA_KB_COLLECTION || "arisa_kb_chunks").trim();
 const ARISA_KB_VERSION = (ARGS.version || process.env.ARISA_KB_VERSION || "th_v1").trim();
 
@@ -60,7 +59,6 @@ const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
 const OLLAMA_EMBED_MODEL = (ARGS.ollamaModel || process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text").trim();
 
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || undefined;
-
 
 function _tryReadJsonFile(p) {
   try {
@@ -95,6 +93,15 @@ function loadServiceAccount() {
     "";
   const fromPath = _tryReadJsonFile(p1);
   if (fromPath) return fromPath;
+
+  // Priority 2.5: match backend default (apps/api/src/serviceAccountKey.json)
+  // This keeps seeding and runtime pointing to the SAME Firebase project.
+  const p2 = path.join(process.cwd(), "apps", "api", "src", "serviceAccountKey.json");
+  const fromP2 = _tryReadJsonFile(p2);
+  if (fromP2) {
+    console.log("[SEED][FIREBASE] using service account file:", p2);
+    return fromP2;
+  }
 
   // Priority 3: auto-detect common locations in this repo
   const candidates = [
@@ -155,7 +162,6 @@ function initFirebaseAdmin() {
     hasServiceAccount: false,
   });
 }
-
 
 async function _getFetch() {
   if (typeof globalThis.fetch === "function") return globalThis.fetch.bind(globalThis);
@@ -319,11 +325,11 @@ async function seed() {
     throw new Error(`Invalid JSON in KB file: ${KB_PATH_RUNTIME} (${e?.message || e})`);
   }
 
-
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error("KB JSON must be a non-empty array");
   }
 
+  console.log("[SEED] cwd =", process.cwd());
   console.log("[SEED] items =", items.length);
   const _prov = pickEmbedProvider();
   if (_prov === "none") {

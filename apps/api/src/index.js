@@ -1,19 +1,3 @@
-// file: apps/api/src/index.js
-// ================== index.js ==================
-// patched: เพิ่ม API /admin/doctor-schedules/notify-now สำหรับ “ส่งแจ้งเตือนทันที”
-// patched: notify-now ใช้ได้ทั้ง admin/staff (เฉพาะ endpoint นี้) โดยเพิ่ม requireStaffOrAdmin
-// patched: ปรับ CRON upcoming reminder ให้ใช้ “เวลา absolute” + window 50–120 นาที
-// patched(A): field หายไป = ยังไม่เคยส่ง (remind1hSent/summarySent missing => send)
-// patched(UI): notify-now / cron เตือนก่อนเริ่ม / cron สรุปพรุ่งนี้ ส่ง Flex UI + ปุ่มลิงก์ (รองรับ carousel)
-// patched(KB): KB short answer 3 blocks + KB 1 line + Quick Reply 3 ชุด
-// patched(2025-12-23): heuristic ดัก “คำอาการ” => SYMPTOM_CHECK + default quick reply เมนูหลัก
-// PATCH(2025-12-24): default เรียก n8n LLM ก่อน แล้วค่อย fallback
-// PATCH(2026-01-10): harden CORS, require CRON_SECRET (no default), fix vector distance, dynamic KB reply,
-//                    normalize notify-now time, remove duplicate cron endpoint (410), remove top-level await,
-//                    add Ollama fallback with guardrails
-// PATCH(2026-01-10-B): add /debug/ollama endpoint (fix: Cannot POST /debug/ollama), guarded for localhost or DEBUG_SECRET
-// PATCH(2026-02-25 Phase A): harden Firestore Memory context (timeout + clamp + trim) with safe fallback
-
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -242,25 +226,86 @@ console.log(
 // ===== Init Firebase Admin =====
 let FIREBASE_PROJECT_ID = "medeasehosting";
 
-if (!getApps().length) {
-  let serviceAccount = null;
-  const saPath = path.join(__dirname, "serviceAccountKey.json");
-
+function _tryReadServiceAccountJson(filePath) {
   try {
-    if (fs.existsSync(saPath)) {
-      const raw = fs.readFileSync(saPath, "utf8");
-      serviceAccount = JSON.parse(raw);
-      console.log(
-        "[FIREBASE] Loaded serviceAccountKey.json for project:",
-        serviceAccount.project_id
-      );
-      if (serviceAccount.project_id) FIREBASE_PROJECT_ID = serviceAccount.project_id;
-    } else {
-      console.warn("[FIREBASE] serviceAccountKey.json not found at", saPath);
-    }
-  } catch (e) {
-    console.error("[FIREBASE] Failed to read/parse serviceAccountKey.json:", e);
+    if (!filePath) return null;
+    if (!fs.existsSync(filePath)) return null;
+    const raw = fs.readFileSync(filePath, "utf8");
+    const obj = JSON.parse(raw);
+    if (obj && obj.project_id && obj.client_email && obj.private_key) return obj;
+    return null;
+  } catch {
+    return null;
   }
+}
+
+function _autoFindServiceAccount() {
+  // 1) Explicit env path or JSON string (if user sets)
+  const rawJson =
+    process.env.FIREBASE_SERVICE_ACCOUNT_JSON ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    "";
+  if (rawJson) {
+    try {
+      const obj = JSON.parse(rawJson);
+      if (obj && obj.project_id && obj.client_email && obj.private_key) {
+        console.log("[FIREBASE] using service account from JSON env");
+        return obj;
+      }
+    } catch {}
+  }
+
+  const envPath =
+    process.env.FIREBASE_SERVICE_ACCOUNT_PATH ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+    "";
+  const fromEnv = _tryReadServiceAccountJson(envPath);
+  if (fromEnv) {
+    console.log("[FIREBASE] using service account file (env):", envPath);
+    return fromEnv;
+  }
+
+  // 2) Legacy / default path (apps/api/src/serviceAccountKey.json)
+  const saPath = path.join(__dirname, "serviceAccountKey.json");
+  const fromLegacy = _tryReadServiceAccountJson(saPath);
+  if (fromLegacy) {
+    console.log("[FIREBASE] using service account file:", saPath);
+    return fromLegacy;
+  }
+
+  // 3) Auto-detect in common repo folders (match seed-kb.js behavior)
+  const candidates = [
+    path.join(process.cwd(), "apps", "api", "secrets"),
+    path.join(process.cwd(), "apps", "api", "src", "secrets"),
+    path.join(process.cwd(), "secrets"),
+    path.join(__dirname, "secrets"),
+    path.join(__dirname, "..", "secrets"),
+  ];
+
+  for (const dir of candidates) {
+    try {
+      if (!fs.existsSync(dir)) continue;
+      const files = fs
+        .readdirSync(dir)
+        .filter((f) => /\.json$/i.test(f) && /adminsdk|serviceaccount|firebase/i.test(f));
+      for (const f of files) {
+        const full = path.join(dir, f);
+        const obj = _tryReadServiceAccountJson(full);
+        if (obj) {
+          console.log("[FIREBASE] using service account file:", full);
+          return obj;
+        }
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
+if (!getApps().length) {
+  const serviceAccount = _autoFindServiceAccount();
+
+  if (serviceAccount?.project_id) FIREBASE_PROJECT_ID = serviceAccount.project_id;
 
   admin.initializeApp({
     credential: serviceAccount
@@ -269,10 +314,17 @@ if (!getApps().length) {
     projectId: FIREBASE_PROJECT_ID,
   });
 
-  console.log("[FIREBASE] init admin with", { projectId: FIREBASE_PROJECT_ID });
+  console.log("[FIREBASE] init admin with", {
+    projectId: FIREBASE_PROJECT_ID,
+    hasServiceAccount: !!serviceAccount,
+  });
 }
 
 const db = admin.firestore();
+
+;
+
+
 
 // ================== Phase A: Memory Guardrails ==================
 // กัน Firestore ช้าหรือค้าง: ดึง context ไม่ทัน -> fallback เป็น [] ทันที (ไม่ทำให้แชทล่ม)
@@ -418,8 +470,13 @@ async function getRecentChatContext(conversationId, limit = 8) {
           sender === "arisa" ||
           sender === "ai";
 
-        const content = _normalizeMsgText(raw, MEMORY_MAX_CHARS_PER_MSG);
+        let content = _normalizeMsgText(raw, MEMORY_MAX_CHARS_PER_MSG);
         if (!content) return null;
+
+        // Prevent reference lines from polluting the next model call (echo effect)
+        if (isAssistant) {
+          content = stripCitationArtifacts(content);
+        }
 
         return {
           role: isAssistant ? "assistant" : "user",
@@ -488,9 +545,15 @@ function extractProfileFacts(text) {
   const t = String(text || "").trim();
   const facts = {};
 
-  // ชื่อ: "ฉันชื่อบอล" / "ผมชื่อบอล" / "ชื่อบอล"
-  const mName = t.match(/^(ฉัน|ผม|หนู|เรา)?\s*ชื่อ\s*([^\s]{2,30})/);
-  if (mName) facts.name = mName[2];
+  // ชื่อ: "ฉันชื่อบอล" / "ฉันชื่อว่า บอล" / "ผมชื่อบอล" / "ชื่อบอล"
+  // - รองรับคำว่า "ว่า"
+  // - ตัดอักขระแปลก ๆ รอบชื่อ
+  const mName = t.match(/^(ฉัน|ผม|หนู|เรา)?\s*ชื่อ(?:\s*ว่า)?\s*([\p{L}0-9._-]{2,30})/u);
+  if (mName) {
+    const raw = String(mName[2] || "").trim();
+    // กันกรณีจับ "ว่าบอล" จาก input ติดกัน
+    facts.name = raw.replace(/^ว่า/, "").trim();
+  }
 
   // สอบ: "พรุ่งนี้มีสอบ" / "พรุ่งนี้สอบ" / "มีสอบ"
   if (/พรุ่งนี้.*สอบ|พรุ่งนี้สอบ|มีสอบ/.test(t)) facts.hasExamSoon = true;
@@ -891,14 +954,39 @@ ${warningLine}`
 }
 
 // ===== Arisa KB (Vector Search) =====
-// ใช้ collection เดิม `arisa_kb_chunks` (มี vector index READY แล้ว) เพื่อให้ค้นแบบเวคเตอร์ได้ทันที
-const ARISA_KB_COLLECTION_SYSTEM =
-  process.env.ARISA_KB_COLLECTION || "arisa_kb_chunks";
+// System KB (FAQ/ระบบ) ใช้ collection เดิม arisa_kb_chunks (มี vector index READY)
+const ARISA_KB_COLLECTION_SYSTEM = process.env.ARISA_KB_COLLECTION || "arisa_kb_chunks";
+const ARISA_KB_VERSION_SYSTEM = process.env.ARISA_KB_VERSION_SYSTEM || "th_v1";
 
-// (ยังคงไว้เผื่ออนาคต ถ้าจะทำ split จริงค่อยเปิดใช้)
-const ARISA_KB_COLLECTION_HEALTH =
-  process.env.ARISA_KB_COLLECTION_HEALTH || "arisa_kb_chunks_health";
+// Health KB (อาการ/ความรู้สุขภาพ) แยก collection เพื่อกันปน
+const ARISA_KB_COLLECTION_HEALTH = process.env.ARISA_KB_COLLECTION_HEALTH || "arisa_kb_chunks_health";
+const ARISA_KB_VERSION_HEALTH = process.env.ARISA_KB_VERSION_HEALTH || "th_v1_health";
 const ARISA_KB_VERSION = process.env.ARISA_KB_VERSION || "th_v1";
+
+// ===== KB threshold guard (prevent irrelevant hits) =====
+// Vector distance: smaller = closer. If distance is too large, treat as no-hit and fallback.
+const ARISA_KB_MAX_DISTANCE_SYSTEM = Number.parseFloat(process.env.ARISA_KB_MAX_DISTANCE_SYSTEM || "0.35");
+const ARISA_KB_MAX_DISTANCE_HEALTH = Number.parseFloat(process.env.ARISA_KB_MAX_DISTANCE_HEALTH || "0.33");
+// Keyword score: require at least N token hits to accept.
+const ARISA_KB_MIN_SCORE = Number.parseInt(process.env.ARISA_KB_MIN_SCORE || "2", 10);
+
+// ===== KB boot check (non-blocking) =====
+(async () => {
+  try {
+    const collectionName = ARISA_KB_COLLECTION_SYSTEM;
+    const kbVersion = ARISA_KB_VERSION_SYSTEM;
+    const snap = await db
+      .collection(collectionName)
+      .where("kbVersion", "==", kbVersion)
+      .limit(1)
+      .get();
+    console.log(
+      `[KB_CHECK] collection=${collectionName} kbVersion=${kbVersion} hasAny=${!snap.empty}`
+    );
+  } catch (e) {
+    console.warn("[KB_CHECK] failed:", e?.message || e);
+  }
+})();
 
 const ARISA_EMBED_MODEL =
   process.env.ARISA_EMBED_MODEL || "gemini-embedding-001";
@@ -1026,7 +1114,7 @@ async function arisaKbKeywordFallback(queryText, limit = 5, collectionName, kbVe
     });
 
     pool.sort((a, b) => (b.score || 0) - (a.score || 0));
-    const hits = pool.filter((h) => (h.score || 0) > 0).slice(0, limit);
+    const hits = pool.filter((h) => (h.score || 0) >= ARISA_KB_MIN_SCORE).slice(0, limit);
 
     return hits.map((h) => ({
       id: h.id,
@@ -1044,20 +1132,89 @@ async function arisaKbKeywordFallback(queryText, limit = 5, collectionName, kbVe
   }
 }
 
-async function arisaKbVectorSearch(queryText, limit = 5, collectionName = ARISA_KB_COLLECTION_SYSTEM) {
-  const kbVersion = ARISA_KB_VERSION;
 
+async function arisaKbKeywordFallbackLoose(queryText, limit = 5, collectionName, preferredKbVersion = null) {
   try {
-    // Use Gemini embeddings if available, otherwise Ollama embeddings (must match chunk embedding provider)
+    const q = String(queryText || "").toLowerCase();
+    const tokens = q.split(/\s+/).filter(Boolean).slice(0, 16);
+
+    // Pull a small pool without kbVersion filter (helps when kbVersion mismatch / old seeds)
+    const snap = await db.collection(collectionName).limit(120).get();
+
+    const pool = [];
+    const versionCount = new Map();
+
+    snap.forEach((doc) => {
+      const d = doc.data() || {};
+      const kbv = String(d.kbVersion || "").trim();
+      if (kbv) versionCount.set(kbv, (versionCount.get(kbv) || 0) + 1);
+
+      const text = String(d.text || "").toLowerCase();
+      const title = String(d.title || "").toLowerCase();
+      const hay = `${title} ${text}`;
+
+      let score = 0;
+
+      // Prefer matches on preferredKbVersion (soft boost, not hard filter)
+      if (preferredKbVersion && kbv === preferredKbVersion) score += 1.5;
+
+      for (const t of tokens) {
+        if (!t) continue;
+        if (hay.includes(t)) score += 1;
+      }
+
+      pool.push({
+        id: doc.id,
+        ...d,
+        score,
+        _kbv: kbv,
+      });
+    });
+
+    pool.sort((a, b) => (b.score || 0) - (a.score || 0));
+    const hits = pool.filter((h) => (h.score || 0) >= ARISA_KB_MIN_SCORE).slice(0, limit);
+
+    // Debug hint: if preferredKbVersion not present at all, log it once
+    try {
+      if (preferredKbVersion && !versionCount.has(preferredKbVersion)) {
+        console.warn(
+          `[KB_RAG] kbVersion mismatch? preferred=${preferredKbVersion} availableVersions=${Array.from(versionCount.keys()).slice(0, 8).join(",") || "(none)"}`
+        );
+      }
+    } catch {}
+
+    return hits.map((h) => ({
+      id: h.id,
+      title: h.title || "",
+      topic: h.topic || "",
+      severity: h.severity || "info",
+      tags: Array.isArray(h.tags) ? h.tags : [],
+      text: h.text || "",
+      redFlags: Array.isArray(h.redFlags) ? h.redFlags : [],
+      distance: undefined,
+      score: h.score,
+      kbVersion: h._kbv || h.kbVersion || "",
+      source: h.source || "",
+      updatedAt: h.updatedAt || "",
+    }));
+  } catch (e) {
+    return [];
+  }
+}
+
+async function arisaKbVectorSearch(
+  queryText,
+  limit = 5,
+  collectionName = ARISA_KB_COLLECTION_SYSTEM,
+  kbVersion = ARISA_KB_VERSION_SYSTEM
+) {
+  try {
     const vec = GEMINI_API_KEY
       ? await geminiEmbedOne({ text: queryText, taskType: "RETRIEVAL_QUERY" })
       : await ollamaEmbedOneForKbQuery({ text: queryText });
 
-    const base = db
-      .collection(collectionName)
-      .where("kbVersion", "==", kbVersion);
+    const base = db.collection(collectionName).where("kbVersion", "==", kbVersion);
 
-    // Firestore Vector Search (requires vector index)
     const q = base.findNearest("embedding", vec, {
       limit,
       distanceMeasure: "COSINE",
@@ -1069,16 +1226,11 @@ async function arisaKbVectorSearch(queryText, limit = 5, collectionName = ARISA_
     const hits = [];
     snap.forEach((doc) => {
       const d = doc.data() || {};
-
-      // distanceResultField may not be inside doc.data()
-      const dist = (() => {
-        try {
-          const v = doc.get?.("distance");
-          return typeof v === "number" ? v : undefined;
-        } catch {
-          return typeof d.distance === "number" ? d.distance : undefined;
-        }
-      })();
+      let dist;
+      try {
+        dist = typeof doc.get === "function" ? doc.get("distance") : undefined;
+      } catch {}
+      if (typeof dist !== "number") dist = typeof d.distance === "number" ? d.distance : undefined;
 
       hits.push({
         id: doc.id,
@@ -1089,21 +1241,45 @@ async function arisaKbVectorSearch(queryText, limit = 5, collectionName = ARISA_
         text: d.text || "",
         redFlags: Array.isArray(d.redFlags) ? d.redFlags : [],
         distance: dist,
+        source: d.source || "",
+        updatedAt: d.updatedAt || "",
       });
     });
 
+    // PATCH: if vector search returns empty, fallback to keyword search
+    if (!hits.length) {
+      const kw1 = await arisaKbKeywordFallback(queryText, limit, collectionName, kbVersion);
+      if (kw1 && kw1.length) return kw1;
+
+      // Loose fallback for kbVersion mismatch / wrong seed version
+      const kw2 = await arisaKbKeywordFallbackLoose(queryText, limit, collectionName, kbVersion);
+      if (kw2 && kw2.length) return kw2;
+    }
+
     return hits;
   } catch (e) {
-    const msg = String(e?.message || e || "");
-    // Firestore Vector Search requires a vector index. If missing, fall back to keyword retrieval (no crash).
+    const msg = String(
+      (typeof getErrMsg === "function" ? getErrMsg(e) : "") || e?.message || e || ""
+    );
+
+    // When vector index is missing, fallback to keyword search (no crash)
     if (msg.includes("FAILED_PRECONDITION") && msg.includes("vector index")) {
       console.warn("[KB_RAG] vector index missing -> keyword fallback");
-      return await arisaKbKeywordFallback(queryText, limit, collectionName, kbVersion);
+      const kw = await arisaKbKeywordFallback(queryText, limit, collectionName, kbVersion);
+      if (kw && kw.length) return kw;
+      return await arisaKbKeywordFallbackLoose(queryText, limit, collectionName, kbVersion);
     }
-    // Any other error: return empty so caller falls back to LLM/flow
+
+    // Other errors (permissions/project mismatch/etc.) -> safe fallback
+    try {
+      const kw = await arisaKbKeywordFallback(queryText, limit, collectionName, kbVersion);
+      if (kw && kw.length) return kw;
+      return await arisaKbKeywordFallbackLoose(queryText, limit, collectionName, kbVersion);
+    } catch {}
     return [];
   }
 }
+
 
 // ===== PATCH: KB short answer (dynamic minimal) =====
 function _pickKbSnippet(text, maxLen = 160) {
@@ -1139,7 +1315,7 @@ function buildArisaKbReplyShort(userText, hits) {
     lines.push(`${top.title || "ข้อมูลจาก MedEase"}`);
     if (snippet) lines.push(`• ${snippet}`);
     lines.push("");
-    lines.push(`อ้างอิง: ${top.sourceId || top.id || "kb"} • ${top.title || top.topic || "MedEase KB"} • ${ARISA_KB_VERSION}`);
+    lines.push(`อ้างอิง: ${top.id || top.sourceId || "kb"}`);
     return lines.join("\n");
   }
 
@@ -1205,7 +1381,7 @@ function buildArisaKbReplyShort(userText, hits) {
   );
 
   lines.push("");
-  lines.push(`อ้างอิง: ${top.sourceId || top.id || "kb"} • ${top.title || top.topic || "MedEase KB"} • ${ARISA_KB_VERSION}`);
+  lines.push(`อ้างอิง: ${top.id || top.sourceId || "kb"}`);
 
   return lines.join("\n");
 }
@@ -1312,6 +1488,28 @@ function dedupeRepeatedText(rawText) {
   return kept.join("\n\n").trim();
 }
 
+// Remove KB citation artifacts from generic chat text (prevents the model from echoing refs)
+function stripCitationArtifacts(text) {
+  let t = String(text || "").trim();
+  if (!t) return t;
+
+  // Remove trailing version tokens like "• th_v1" or standalone "th_v1"
+  t = t.replace(/\s*•\s*th_v\d+\b/gi, "");
+  t = t.replace(/\bth_v\d+\b\s*$/i, "").trim();
+
+  // Remove explicit reference lines
+  const lines = t.split(/\n/);
+  const kept = [];
+  for (const line of lines) {
+    const s = String(line || "").trim();
+    if (!s) { kept.push(line); continue; }
+    if (/^อ้างอิง\s*:/i.test(s)) continue;
+    kept.push(line);
+  }
+  return kept.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+
 // Central normalizer before sending to LINE
 function normalizeOutgoingText({ conversationId, text, healthMode = false }) {
   let out = String(text || "").trim();
@@ -1328,6 +1526,12 @@ function normalizeOutgoingText({ conversationId, text, healthMode = false }) {
 
   // dedupe duplicated blocks/paras/lines anywhere
   out = dedupeRepeatedText(out);
+
+  // If the model accidentally echoes KB refs in normal chat, remove them.
+  // Keep refs only for KB-style answers (which include 'หัวข้อ:' or start with '📍 ค้นหา').
+  if (out.includes("อ้างอิง:") && !out.includes("หัวข้อ:") && !out.startsWith("📍")) {
+    out = stripCitationArtifacts(out);
+  }
 
   return out;
 }
@@ -2637,45 +2841,6 @@ function logLineError(err) {
   console.error("[LINE_ERROR]", err?.message || err);
 }
 
-
-// ===== Study helper: "อาหารและยา" (อ่านสอบ) =====
-function isFoodDrugStudyQuestion(text) {
-  const t = String(text || "").toLowerCase();
-  const hasExam = /สอบ|อ่านสอบ|สรุป|ติว|เนื้อหา/.test(t);
-  const hasFoodDrug = /อาหาร/.test(t) && /ยา/.test(t);
-  return hasExam && hasFoodDrug;
-}
-
-function buildFoodDrugStudySummary() {
-  const lines = [];
-  lines.push("สรุปอ่านสอบ: “อาหาร & ยา” (แบบปลอดภัย) 📚");
-  lines.push("");
-  lines.push("1) หลักการพื้นฐาน");
-  lines.push("• อ่านฉลาก/วิธีใช้ยา และทำตามคำแนะนำของแพทย์/เภสัชกร");
-  lines.push("• ยาบางชนิดต้องกิน “ก่อนอาหาร/พร้อมอาหาร/หลังอาหาร” เพราะมีผลต่อการดูดซึมและการระคายเคืองกระเพาะ");
-  lines.push("• หลีกเลี่ยงการกินยาหลายชนิดพร้อมกันโดยไม่รู้ว่าซ้ำตัวยาหรือไม่");
-  lines.push("");
-  lines.push("2) ตัวอย่างปฏิกิริยาที่พบบ่อย (แนวคิด ไม่ลงขนาดยา)");
-  lines.push("• คาเฟอีน (กาแฟ/ชา/ชูกำลัง) + ยาบางชนิด → ใจสั่น นอนไม่หลับ กระสับกระส่ายได้");
-  lines.push("• แอลกอฮอล์ + ยาที่ทำให้ง่วง/เวียนหัว หรือยาบางชนิด → เสี่ยงง่วงมาก อุบัติเหตุ หรืออันตรายต่อตับ");
-  lines.push("• นม/แคลเซียมสูง (นม/โยเกิร์ต/อาหารเสริมแคลเซียม) อาจลดการดูดซึมของยาบางกลุ่ม (บางชนิดต้องเว้นช่วง)");
-  lines.push("• เกรปฟรุต/น้ำเกรปฟรุต อาจมีผลกับยาบางชนิด (ควรหลีกเลี่ยงถ้าไม่แน่ใจ)");
-  lines.push("");
-  lines.push("3) เทคนิคจำง่ายเพื่อทำข้อสอบ");
-  lines.push("• ถ้ากินยาแล้ว “ระคายท้อง” มักแก้ด้วยการกินพร้อมอาหาร (ยกเว้นยาที่ระบุให้กินก่อนอาหาร)");
-  lines.push("• ถ้าเป็นยาที่ต้อง “เว้นช่วง” ให้จำหลักการว่า เว้นช่วงอย่างน้อย ~2 ชม. แล้วดูฉลากเป็นหลัก");
-  lines.push("• ยาที่ทำให้ง่วง: หลีกเลี่ยงแอลกอฮอล์/ขับรถ และระวังการใช้ร่วมกับยานอนหลับ");
-  lines.push("");
-  lines.push("4) เช็กลิสต์ก่อนตอบ/ก่อนใช้ยา");
-  lines.push("• ยานี้กินก่อนหรือหลังอาหาร?");
-  lines.push("• ห้ามร่วมกับแอลกอฮอล์/คาเฟอีน/นม/เกรปฟรุตหรือไม่?");
-  lines.push("• มีโรคประจำตัว/แพ้ยา/ตั้งครรภ์/ให้นมบุตรไหม?");
-  lines.push("");
-  lines.push("⚠️ หมายเหตุ: เป็นความรู้เบื้องต้นเพื่อการเรียน ไม่แทนคำแนะนำแพทย์/เภสัชกรนะคะ");
-  lines.push("ถ้าอยากให้สรุปแบบแนวข้อสอบเพิ่ม บอกได้เลยว่าอยากเน้นหัวข้อไหน (เช่น ยากับนม / ยากับแอลกอฮอล์ / ยากับกาแฟ) 😊");
-  return lines.join("\n");
-}
-
 // ===== Small talk & Flow helpers =====
 const smallTalkMap = new Map([
   [["อาริศาอายุเท่าไหร่", "อาริศาอายุกี่ปี", "อายุเท่าไหร่"], "อาริศา 22 ปีค่ะ แต่ใจยังเด็กอยู่เลย 💕"],
@@ -2810,9 +2975,55 @@ async function handleEvent(event) {
       conversationId,
       patch: { lastMessageAt: now, updatedAt: now, lastMessageText: String(logText || "").slice(0, 120) },
     });
+
+    // PATCH(Profile Memory): if user asks "ชื่ออะไร/จำชื่อ", answer directly from profile (no LLM needed)
+    try {
+      if (/ชื่อ(ฉัน|ผม|หนู|เรา)?(คือ|ว่า)?อะไร|จำชื่อ/i.test(logText)) {
+        const profileNow = await getArisaProfile(profileKey);
+        const pname = profileNow?.name ? String(profileNow.name).trim() : "";
+        if (pname) {
+          return reply(
+            event.replyToken,
+            `อาริศาจำได้ค่ะ 😊 คุณชื่อ “${pname}” นะคะ`,
+            conversationId,
+            { toolUsed: "profile_memory", kind: "name_recall" }
+          );
+        }
+        return reply(
+          event.replyToken,
+          "อาริศายังไม่แน่ใจชื่อของคุณค่ะ 🥺 คุณบอกอาริศาได้ไหมคะว่าอยากให้เรียกชื่อว่าอะไร",
+          conversationId,
+          { toolUsed: "profile_memory", kind: "name_missing" }
+        );
+      }
+    } catch {}
   } catch (err) {
     console.error("[CONVERSATION_LOG_ERROR]", err);
   }
+
+  // ===== Quick command: "คลินิกใกล้ฉัน" (no location required) =====
+  // ให้ส่งลิงก์ Google Maps ทันที (ไม่ไปดึง KB/RAG และไม่ต้องให้ผู้ใช้ส่ง location)
+  if (rawType === "text") {
+    const t0 = String(text || "").trim();
+    const t = t0.replace(/\s+/g, "");
+    if (/^คลินิกใกล้ฉัน/.test(t) || t.includes("คลินิกใกล้ฉัน") || t.includes("หาคลินิกใกล้ฉัน")) {
+      const mapsUrl =
+        "https://www.google.com/maps/search/?api=1&query=" +
+        encodeURIComponent("clinic near me");
+      const msg = [
+        "📍 ค้นหา “คลินิกใกล้ฉัน” ได้เลยค่ะ",
+        mapsUrl,
+        "",
+        "วิธีใช้ (สั้น ๆ):",
+        "1) กดลิงก์เพื่อเปิด Google Maps",
+        "2) เปิด Location/GPS ในมือถือ",
+        "3) เลือกคลินิกที่ใกล้ + ดูคะแนน/เวลาเปิด-ปิด",
+      ].join("\n");
+      return reply(event.replyToken, msg, conversationId, { toolUsed: "maps_link" });
+    }
+  }
+
+
 
   // ===== Location: ค้นคลินิก/รพ ใกล้ฉัน (OSM Overpass) =====
   if (rawType === "location") {
@@ -2926,7 +3137,7 @@ async function handleEvent(event) {
           [
             { label: "🏥 นัดหมายแพทย์", text: "นัดหมายแพทย์" },
             { label: "📍 หาคลินิกใกล้ฉัน", text: "คลินิกใกล้ฉัน" },
-            { label: "💬 คุยเล่น", text: "สวัสดี" },
+            { label: "💬 คุยเล่น", text: "คุยเล่น" },
           ],
           conversationId,
           { toolUsed: llmTool, conversationId }
@@ -3146,7 +3357,7 @@ async function handleEvent(event) {
             [
               { label: "🏥 นัดหมายแพทย์", text: "นัดหมายแพทย์" },
               { label: "📍 หาคลินิกใกล้ฉัน", text: "คลินิกใกล้ฉัน" },
-              { label: "💬 คุยเล่น", text: "สวัสดี" },
+              { label: "💬 คุยเล่น", text: "คุยเล่น" },
             ],
             conversationId,
             { toolUsed: llmTool, conversationId }
@@ -3163,102 +3374,111 @@ async function handleEvent(event) {
     case "SMALL_TALK":
       return reply(event.replyToken, "อาริศาพร้อมคุยด้วยเสมอค่ะ 😊 อยากถามหรือเล่าอะไรให้ฟังได้เลยน้า", conversationId);
 
-    default: {
+        default: {
       // ===== Phase B: RAG (KB) for general questions =====
       // Try KB first for non-health, non-flow queries. If not found, fall back to LLM as before.
       try {
-        const SYS_QUERY = /\bmedease\b|arisa|อริศา|ฟีเจอร์|นัดหมาย|ใบรับรอง|ข่าวสุขภาพ|ความเป็นส่วนตัว|ตอบซ้ำ|ใช้งาน|คู่มือ|faq/i.test(text);
-        if (!SYS_QUERY) {
-          // Not a system/FAQ question -> skip KB to avoid wrong topic hits
+        const SYS_QUERY =
+          /(medease|arisa|ฟีเจอร์|ทำอะไรได้|ทำยังไง|ใช้งาน|เมนู|นัดหมาย|ใบรับรอง|ข่าว|privacy|pdpa|สิทธิ์|admin|login|logout|ตอบซ้ำ|troubleshoot)/i.test(
+            text
+          );
+
+        const healthMode = isHealthQuestion(text);
+
+        if (!SYS_QUERY && !healthMode) {
           throw new Error("KB_SKIP_NON_SYS_QUERY");
         }
-        const kbHits = await arisaKbVectorSearch(text, 3, ARISA_KB_COLLECTION_SYSTEM);
-        const SYS_TOPICS = new Set(["about","features","appointments","certificates","news","privacy","troubleshoot","study","safety"]);
-        const kbHitsUsed = (kbHits || []).filter((h) => SYS_TOPICS.has(String(h.topic || "").toLowerCase()));
-        const topUsed = kbHitsUsed && kbHitsUsed[0] ? kbHitsUsed[0] : null;
 
+        const collectionName = healthMode ? ARISA_KB_COLLECTION_HEALTH : ARISA_KB_COLLECTION_SYSTEM;
+        const kbVersion = healthMode ? ARISA_KB_VERSION_HEALTH : ARISA_KB_VERSION_SYSTEM;
 
-        // COSINE distance: smaller = closer. Keep threshold loose; if distance missing, still allow.
-        const ok =
-          topUsed &&
-          topUsed.text &&
-          (typeof topUsed.distance !== "number" || topUsed.distance <= Number(process.env.ARISA_KB_MAX_DISTANCE || 0.45));
+        const kbHits = await arisaKbVectorSearch(text, 4, collectionName, kbVersion);
 
-        if (ok) {
-          const kbAnswer = buildArisaKbReplyShort(text, kbHitsUsed);
-          if (kbAnswer) {
-            await logKbRagToFirestore({
-              conversationId,
-              userId,
-              queryText: text,
-              hits: kbHitsUsed,
-              answer: kbAnswer,
-              collectionName: ARISA_KB_COLLECTION_SYSTEM,
-            });
-            return replyQuick(
-              event.replyToken,
-              kbAnswer,
-              [
-                { label: "🏥 นัดหมายแพทย์", text: "นัดหมายแพทย์" },
-                { label: "📄 ขอใบรับรอง", text: "ขอใบรับรองแพทย์" },
-                { label: "📢 ข่าวสุขภาพ", text: "ข่าวสุขภาพ" }
-              ],
-              conversationId,
-              { toolUsed: "kb_rag", conversationId }
-            );
-          }
+        const SYS_TOPICS = new Set([
+          "about",
+          "features",
+          "appointments",
+          "certificates",
+          "news",
+          "privacy",
+          "troubleshoot",
+          "system",
+        ]);
+        const HEALTH_TOPICS = new Set(["dengue", "headache", "fever_u5", "safety"]);
+
+        const allow = healthMode ? HEALTH_TOPICS : SYS_TOPICS;
+        const kbHitsUsed = (kbHits || []).filter((h) =>
+          allow.has(String(h.topic || "").toLowerCase())
+        );
+
+        const top = kbHitsUsed && kbHitsUsed[0] ? kbHitsUsed[0] : null;
+
+        try {
+          console.log(
+            `[KB_RAG] mode=${healthMode ? "health" : "system"} collection=${collectionName} version=${kbVersion}`
+          );
+          console.log(
+            `[KB_RAG] hits=${kbHitsUsed.length} topId=${top ? top.id : "(none)"} topTopic=${top ? top.topic : "(none)"}`
+          );
+        } catch (_) {}
+
+        const kbReply = buildArisaKbReplyShort(text, kbHitsUsed);
+        if (kbReply) {
+          return reply(event.replyToken, kbReply, conversationId);
         }
+
+        throw new Error("KB_NO_HIT");
       } catch (e) {
         // never crash: fallback to LLM
         if ((e?.message || "") !== "KB_SKIP_NON_SYS_QUERY") {
-        const _m = String(e?.message || e || "");
-        if (_m.includes("FAILED_PRECONDITION") && _m.includes("vector index")) {
-          // quiet: vector index missing; keyword fallback (or LLM) will handle
-        } else {
-          console.warn("[KB_RAG] failed -> fallback:", e?.message || e);
+          const _m = String(e?.message || e || "");
+          if (_m.includes("FAILED_PRECONDITION") && _m.includes("vector index")) {
+            // quiet: vector index missing; keyword fallback (or LLM) will handle
+          } else {
+            console.warn("[KB_RAG] failed -> fallback:", e?.message || e);
+          }
         }
-      }
-      }
 
-      // LLM fallback: n8n -> ollama -> menu
-      const fallbackQuick = [
-        { label: "🩺 เช็กอาการ", text: "เช็กอาการ" },
-        { label: "🏥 นัดหมายแพทย์", text: "นัดหมายแพทย์" },
-        { label: "📄 ขอใบรับรอง", text: "ขอใบรับรองแพทย์" },
-        { label: "📢 ข่าวสุขภาพ", text: "ข่าวสุขภาพ" },
-        { label: "💬 คุยเล่น", text: "สวัสดี" },
-      ];
+        // LLM fallback: n8n -> ollama -> menu
+        const fallbackQuick = [
+          { label: "🩺 เช็กอาการ", text: "เช็กอาการ" },
+          { label: "🏥 นัดหมายแพทย์", text: "นัดหมายแพทย์" },
+          { label: "📄 ขอใบรับรอง", text: "ขอใบรับรองแพทย์" },
+          { label: "📢 ข่าวสุขภาพ", text: "ข่าวสุขภาพ" },
+          { label: "💬 คุยเล่น", text: "คุยเล่น" },
+        ];
 
-      const convoIdForLLM = conversationId || getConversationIdFromLineEvent(event);
-      const llmTool = ARISA_USE_OLLAMA ? "ollama" : "n8n_llm";
+        const convoIdForLLM = conversationId || getConversationIdFromLineEvent(event);
+        const llmTool = ARISA_USE_OLLAMA ? "ollama" : "n8n_llm";
 
-      try {
-        const llmText = ARISA_USE_OLLAMA
-          ? await arisaLLMReply({ userText: text, conversationId: convoIdForLLM, userId })
-          : await callArisaLLM({ userId, text, conversationId: convoIdForLLM });
-        if (llmText) {
-          return replyQuick(event.replyToken, llmText, fallbackQuick, conversationId, { toolUsed: llmTool, conversationId });
+        try {
+          const llmText = ARISA_USE_OLLAMA
+            ? await arisaLLMReply({ userText: text, conversationId: convoIdForLLM, userId })
+            : await callArisaLLM({ userId, text, conversationId: convoIdForLLM });
+          if (llmText) {
+            return replyQuick(event.replyToken, llmText, fallbackQuick, conversationId, { toolUsed: llmTool, conversationId });
+          }
+        } catch (e2) {
+          console.warn(`[LLM_FALLBACK] ${llmTool} failed:`, e2?.message || e2);
         }
-      } catch (e) {
-        console.warn(`[LLM_FALLBACK] ${llmTool} failed:`, e?.message || e);
-      }
 
-      try {
-        const oText = await callOllamaLLM({ userId, text, conversationId: convoIdForLLM });
-        if (oText) {
-          return replyQuick(event.replyToken, oText, fallbackQuick, conversationId, { toolUsed: "ollama_llm", conversationId });
+        try {
+          const oText = await callOllamaLLM({ userId, text, conversationId: convoIdForLLM });
+          if (oText) {
+            return replyQuick(event.replyToken, oText, fallbackQuick, conversationId, { toolUsed: "ollama_llm", conversationId });
+          }
+        } catch (e3) {
+          console.warn("[LLM_FALLBACK] ollama failed -> menu:", e3?.message || e3);
         }
-      } catch (e) {
-        console.warn("[LLM_FALLBACK] ollama failed -> menu:", e?.message || e);
-      }
 
-      return replyQuick(
-        event.replyToken,
-        "อาริศายังไม่แน่ใจว่าคุณต้องการเรื่องไหนค่ะ 😊 เลือกเมนูได้เลยนะคะ",
-        fallbackQuick,
-        conversationId,
-        { toolUsed: "default_menu", conversationId }
-      );
+        return replyQuick(
+          event.replyToken,
+          "อาริศายังไม่แน่ใจว่าคุณต้องการเรื่องไหนค่ะ 😊 เลือกเมนูได้เลยนะคะ",
+          fallbackQuick,
+          conversationId,
+          { toolUsed: "default_menu", conversationId }
+        );
+      }
     }
   }
 }
