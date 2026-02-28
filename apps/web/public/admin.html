@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Dashboard - MedEase</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- FontAwesome (สำหรับไอคอนเมนู) -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"
+  />
+
+  <style>
+    :root {
+      --primary: #3b82f6;   /* blue-500/600 */
+      --secondary: #8b5cf6; /* violet-500 */
+      --bg-soft: #f8fafc;   /* slate-50 */
+      --text-main: #0f172a; /* slate-900 */
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Sarabun', 'Segoe UI', sans-serif;
+      background-color: var(--bg-soft);
+      color: var(--text-main);
+      min-height: 100vh;
+    }
+
+    a:focus-visible,
+    button:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .sidebar {
+      background: #ffffff;
+      border-right: 1px solid #e2e8f0;
+    }
+
+    .sb-title {
+      letter-spacing: 0.04em;
+    }
+
+    .sidebar a {
+      transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+    }
+
+    .sidebar a:hover {
+      transform: translateX(2px);
+    }
+
+    .card-border {
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+    }
+  </style>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzRiHElsEa_PFOf90mJXzVELsuHwG5_fM",
+      authDomain: "medeasehosting.firebaseapp.com",
+      projectId: "medeasehosting",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    const adminEmailEl = document.getElementById("adminEmail");
+    const btnLogout = document.getElementById("btnLogout");
+
+    // ปุ่มออกจากระบบ
+    btnLogout.addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+        window.location.href = "login.html";
+      } catch (err) {
+        console.error(err);
+        alert("ออกจากระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      }
+    });
+
+    // ตรวจสิทธิ์
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        // ถ้ายังไม่ล็อกอิน → ไป login แล้วกลับมาที่ admin.html
+        window.location.href = "login.html?next=/admin.html";
+        return;
+      }
+
+      const token = await user.getIdTokenResult(true); // true = refresh claims
+      console.log("claims from Firebase =", token.claims);
+
+      // เช็กสิทธิ์ admin จาก role หรือ admin === true
+      const claims = token.claims;
+      const isAdmin = claims.role === "admin" || claims.admin === true;
+
+      if (!isAdmin) {
+        alert("คุณไม่มีสิทธิ์เข้าถึงหน้านี้");
+        window.location.href = "index.html";
+        return;
+      }
+
+      adminEmailEl.textContent = user.email || "-";
+      // ถ้ามีฟังก์ชันโหลดข้อมูลอื่น ๆ ของแดชบอร์ด ให้เรียกต่อจากนี้ได้
+    });
+  </script>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <aside class="sidebar fixed top-0 left-0 h-full w-56 flex flex-col text-slate-700 shadow-sm z-10">
+    <div class="p-6 border-b border-slate-100">
+      <span class="sb-title text-2xl font-bold tracking-wide flex items-center gap-2 text-slate-900">
+        <i class="fa-solid fa-stethoscope text-pink-400"></i> MedEase
+      </span>
+      <div class="mt-2 text-xs text-slate-500">Admin Dashboard</div>
+    </div>
+
+    <nav class="flex-1 p-4 space-y-1 text-sm">
+      <a
+        href="https://medeasehosting.web.app/admin.html"
+        class="block px-4 py-2 rounded-lg bg-slate-100 text-slate-900 font-semibold"
+      >
+        <i class="fa fa-gauge-high mr-2"></i>แดชบอร์ดหลัก
+      </a>
+      <a
+        href="https://medeasehosting.web.app/admin-certificates.html"
+        class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900"
+      >
+        <i class="fa fa-file-medical mr-2"></i>ใบรับรองแพทย์
+      </a>
+
+      <!-- ✅ เมนูใหม่: ตารางเวรแพทย์ -->
+      <a
+        href="https://medeasehosting.web.app/admin-doctor-schedules.html"
+        class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900"
+      >
+        <i class="fa-solid fa-user-doctor mr-2"></i>ตารางเวรแพทย์
+      </a>
+
+      <a
+        href="https://medeasehosting.web.app/user-conversations.html"
+        class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900"
+      >
+        <i class="fa-solid fa-comments mr-2"></i>บทสนทนาผู้ใช้
+      </a>
+      <a
+        href="https://medeasehosting.web.app/admin-users.html"
+        class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900"
+      >
+        <i class="fa fa-user-shield mr-2"></i>แอดมิน
+      </a>
+    </nav>
+
+    <div class="mt-auto mb-6 px-6 text-xs text-slate-400">
+      © 2025 MedEase
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="ml-56 min-h-screen flex flex-col">
+    <!-- TOP BAR -->
+    <header class="bg-white/90 border-b border-slate-100">
+      <div class="max-w-6xl mx-auto px-4 lg:px-8 py-4 flex items-center justify-between gap-4">
+        <!-- ซ้าย: โลโก้ Arisa + ชื่อระบบ -->
+        <div class="flex items-center gap-3">
+          <img
+            src="Arisa.png"
+            alt="Arisa - MedEase Assistant"
+            class="h-10 w-10 rounded-full object-cover border border-slate-200"
+          />
+          <div>
+            <p class="text-xs font-semibold text-sky-700">MedEase Admin</p>
+            <h1 class="text-lg md:text-xl font-bold text-slate-900">
+              แผงควบคุมผู้ดูแลระบบ
+            </h1>
+          </div>
+        </div>
+
+        <!-- ขวา: อีเมล + ออกจากระบบ -->
+        <div class="flex items-center gap-3">
+          <span
+            id="adminEmail"
+            class="px-3 py-1 rounded-full bg-slate-50 border border-slate-200 text-xs md:text-sm text-slate-800"
+          >
+            ...
+          </span>
+          <button
+            id="btnLogout"
+            class="px-4 py-1.5 rounded-md bg-rose-500 text-white text-xs md:text-sm font-medium hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-300"
+          >
+            ออกจากระบบ
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <section class="max-w-6xl mx-auto px-4 lg:px-8 py-8 flex-1">
+      <p class="text-sm text-slate-600 mb-6">
+        เลือกเมนูด้านล่างเพื่อจัดการระบบ MedEase
+      </p>
+
+      <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <!-- การนัดหมาย -->
+        <a
+          href="admin-appointments.html"
+          class="block rounded-2xl border border-slate-200 bg-white p-5 hover:border-sky-400 hover:shadow-sm transition"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold text-slate-900">จัดการนัดหมาย</h2>
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-sky-100 text-sky-700">
+              <i class="fa-solid fa-calendar-check"></i>
+            </span>
+          </div>
+          <p class="text-sm text-slate-600 mb-4 leading-relaxed">
+            ยืนยัน / ยกเลิก / เลื่อนนัด และส่งแจ้งเตือนทาง LINE ให้ผู้ใช้
+          </p>
+          <span class="inline-flex items-center text-sm font-medium text-sky-700">
+            ไปหน้าจัดการนัดหมาย
+            <span class="ml-1">→</span>
+          </span>
+        </a>
+
+        <!-- ข่าวสุขภาพ -->
+        <a
+          href="admin-add-new.html"
+          class="block rounded-2xl border border-slate-200 bg-white p-5 hover:border-sky-400 hover:shadow-sm transition"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold text-slate-900">ข่าวสุขภาพ</h2>
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+              <i class="fa-solid fa-newspaper"></i>
+            </span>
+          </div>
+          <p class="text-sm text-slate-600 mb-4 leading-relaxed">
+            เพิ่ม แก้ไข และลบข่าวสุขภาพบนหน้าเว็บไซต์ MedEase
+          </p>
+          <span class="inline-flex items-center text-sm font-medium text-sky-700">
+            ไปหน้าจัดการข่าว
+            <span class="ml-1">→</span>
+          </span>
+        </a>
+
+        <!-- ใบรับรองแพทย์ -->
+        <a
+          href="https://medeasehosting.web.app/admin-certificates.html"
+          class="block rounded-2xl border border-slate-200 bg-white p-5 hover:border-sky-400 hover:shadow-sm transition"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold text-slate-900">ใบรับรองแพทย์</h2>
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+              <i class="fa-solid fa-file-medical"></i>
+            </span>
+          </div>
+          <p class="text-sm text-slate-600 mb-4 leading-relaxed">
+            ดูคำขอใบรับรอง อัปโหลดไฟล์ PDF และจัดการสถานะการออกใบรับรอง
+          </p>
+          <span class="inline-flex items-center text-sm font-medium text-sky-700">
+            ไปหน้าจัดการใบรับรอง
+            <span class="ml-1">→</span>
+          </span>
+        </a>
+
+        <!-- ✅ การ์ดใหม่: ตารางเวรแพทย์ -->
+        <a
+          href="admin-doctor-schedules.html"
+          class="block rounded-2xl border border-slate-200 bg-white p-5 hover:border-sky-400 hover:shadow-sm transition"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold text-slate-900">ตารางเวรแพทย์</h2>
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-teal-100 text-teal-700">
+              <i class="fa-solid fa-user-doctor"></i>
+            </span>
+          </div>
+          <p class="text-sm text-slate-600 mb-4 leading-relaxed">
+            จัดการกะเวรแพทย์ เลือกหมอ เลือกวัน และแก้ไขกะเวรได้จากที่เดียว
+          </p>
+          <span class="inline-flex items-center text-sm font-medium text-sky-700">
+            ไปหน้าตารางเวร
+            <span class="ml-1">→</span>
+          </span>
+        </a>
+
+        <!-- บทสนทนาผู้ใช้ / แชทบอต -->
+        <a
+          href="https://medeasehosting.web.app/user-conversations.html"
+          class="block rounded-2xl border border-slate-200 bg-white p-5 hover:border-sky-400 hover:shadow-sm transition"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold text-slate-900">บทสนทนาผู้ใช้</h2>
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+              <i class="fa-solid fa-comments"></i>
+            </span>
+          </div>
+          <p class="text-sm text-slate-600 mb-4 leading-relaxed">
+            ดูประวัติการสนทนากับ Arisa วิเคราะห์คำถามยอดฮิต และปรับปรุงแชทบอต
+          </p>
+          <span class="inline-flex items-center text-sm font-medium text-sky-700">
+            ไปหน้าดูบทสนทนา
+            <span class="ml-1">→</span>
+          </span>
+        </a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

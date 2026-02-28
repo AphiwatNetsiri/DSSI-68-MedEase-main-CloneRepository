@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ผู้ขอใบรับรองแพทย์ - MedEase Admin</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
+
+  <!-- Font -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    :root {
+      --primary: #3b82f6;  /* blue-500/600 */
+      --secondary: #8b5cf6; /* violet-500 */
+      --bg-soft: #f8fafc;   /* slate-50 */
+      --text-main: #0f172a; /* slate-900 */
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Sarabun', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: var(--bg-soft);
+      color: var(--text-main);
+      min-height: 100vh;
+    }
+
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .sidebar {
+      background: #ffffff;
+      border-right: 1px solid #e2e8f0;
+    }
+
+    .sb-title {
+      letter-spacing: 0.04em;
+    }
+
+    .sidebar a {
+      transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+    }
+
+    .sidebar a:hover {
+      transform: translateX(2px);
+    }
+
+    .active {
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+
+    .sb-table-scroll {
+      overflow-x: auto;
+    }
+
+    .table {
+      min-width: 780px;
+    }
+
+    .sb-table th,
+    .sb-table td {
+      white-space: nowrap;
+    }
+
+    .stat-card {
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+    }
+
+    .card-border {
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+    }
+
+    .btn-cyan {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .btn-cyan:hover {
+      background: #1d4ed8;
+      color: #ffffff;
+    }
+
+    .btn-pink {
+      background: #ec4899;
+      color: #ffffff;
+    }
+
+    .btn-pink:hover {
+      background: #db2777;
+      color: #ffffff;
+    }
+
+    .badge-pending {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .badge-approved {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .badge-rejected {
+      background: #e5e7eb;
+      color: #374151;
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar fixed top-0 left-0 h-full w-56 flex flex-col text-slate-700 shadow-sm z-10">
+    <div class="p-6 border-b border-slate-100">
+      <span class="sb-title text-2xl font-bold tracking-wide flex items-center gap-2 text-slate-900">
+        <i class="fa-solid fa-stethoscope text-pink-400"></i>
+        MedEase
+      </span>
+      <div class="mt-2 text-xs text-slate-500">Admin Dashboard</div>
+    </div>
+
+    <nav class="flex-1 p-4 space-y-1 text-sm">
+      <a
+        href="https://medeasehosting.web.app/admin.html"
+        class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900"
+      >
+        <i class="fa fa-gauge-high mr-2"></i>แดชบอร์ดหลัก
+      </a>
+      <a
+        href="https://medeasehosting.web.app/admin-certificates.html"
+        class="block px-4 py-2 rounded-lg active"
+      >
+        <i class="fa fa-file-medical mr-2"></i>ผู้ขอใบรับรอง
+      </a>
+      <a
+        href="https://medeasehosting.web.app/admin-users.html"
+        class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900"
+      >
+        <i class="fa fa-user-shield mr-2"></i>แอดมิน
+      </a>
+    </nav>
+
+    <div class="mt-auto mb-6 px-6 text-xs text-slate-400">
+      © 2025 MedEase
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="ml-56 min-h-screen flex flex-col">
+
+    <!-- TOP BAR -->
+    <header
+      class="bg-white/90 backdrop-blur flex flex-wrap gap-4 items-center justify-between px-6 lg:px-8 py-4 card-border shadow-sm mt-4 mx-4"
+    >
+      <div>
+        <p class="text-xs font-semibold text-sky-600 flex items-center gap-2">
+          <i class="fa-solid fa-file-medical text-pink-400"></i>
+          MedEase Admin · ใบรับรองแพทย์
+        </p>
+        <h1 class="text-lg md:text-xl font-bold text-slate-900 mt-1">
+          รายการผู้ขอใบรับรองแพทย์
+        </h1>
+      </div>
+
+      <div class="flex flex-wrap gap-3 items-center justify-end">
+        <span class="text-xs md:text-sm text-slate-600">
+          เข้าสู่ระบบในชื่อ:
+          <span id="adminEmail" class="font-semibold text-slate-900">-</span>
+        </span>
+
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <label for="searchBox" class="sr-only">ค้นหาคำร้อง</label>
+          <input
+            type="text"
+            id="searchBox"
+            placeholder="ค้นหาชื่อ / LINE / เบอร์โทร..."
+            class="border border-slate-200 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white w-full sm:w-64"
+          />
+        </div>
+
+        <a
+          href="admin.html"
+          class="btn-cyan px-3 py-2 rounded-lg shadow-sm text-xs md:text-sm font-semibold transition flex items-center gap-1"
+        >
+          <i class="fa-solid fa-arrow-left"></i>
+          <span>กลับแดชบอร์ด</span>
+        </a>
+
+        <button
+          id="btnAdd"
+          class="btn-pink px-3 py-2 rounded-lg shadow-sm text-xs md:text-sm font-semibold transition flex items-center gap-1"
+        >
+          <i class="fa-solid fa-plus"></i>
+          <span>เพิ่มคำขอใหม่</span>
+        </button>
+
+        <button
+          id="btnLogout"
+          class="btn-cyan px-3 py-2 rounded-lg shadow-sm text-xs md:text-sm font-semibold transition flex items-center gap-1"
+        >
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          <span>ออกจากระบบ</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- STATS -->
+    <section class="px-4 lg:px-8 py-6 grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+      <div class="stat-card rounded-2xl p-5 flex items-center gap-4">
+        <div class="bg-sky-100 text-sky-700 w-12 h-12 rounded-full flex items-center justify-center text-xl">
+          <i class="fa fa-user-injured"></i>
+        </div>
+        <div>
+          <div class="text-lg font-bold" id="countRequests">-</div>
+          <div class="text-xs text-slate-500">คำร้องทั้งหมด</div>
+        </div>
+      </div>
+
+      <div class="stat-card rounded-2xl p-5 flex items-center gap-4">
+        <div class="bg-emerald-100 text-emerald-700 w-12 h-12 rounded-full flex items-center justify-center text-xl">
+          <i class="fa fa-circle-check"></i>
+        </div>
+        <div>
+          <div class="text-lg font-bold" id="countApproved">-</div>
+          <div class="text-xs text-slate-500">อนุมัติแล้ว</div>
+        </div>
+      </div>
+
+      <div class="stat-card rounded-2xl p-5 flex items-center gap-4">
+        <div class="bg-rose-100 text-rose-600 w-12 h-12 rounded-full flex items-center justify-center text-xl">
+          <i class="fa fa-hourglass-half"></i>
+        </div>
+        <div>
+          <div class="text-lg font-bold" id="countPending">-</div>
+          <div class="text-xs text-slate-500">รออนุมัติ</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TABLE -->
+    <section class="px-4 lg:px-8 pb-8 flex-1">
+      <div class="bg-white rounded-2xl shadow-sm p-4 lg:p-6 sb-table-scroll card-border">
+        <table class="table sb-table w-full text-sm">
+          <thead>
+            <tr class="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+              <th scope="col" class="py-2 px-3 text-left">#</th>
+              <th scope="col" class="py-2 px-3 text-left">ชื่อ-นามสกุล</th>
+              <th scope="col" class="py-2 px-3 text-left">LINE Name</th>
+              <th scope="col" class="py-2 px-3 text-left">เบอร์โทร</th>
+              <th scope="col" class="py-2 px-3 text-left">อาการ</th>
+              <th scope="col" class="py-2 px-3 text-left">สถานะ</th>
+              <th scope="col" class="py-2 px-3 text-left">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="dataTable">
+            <tr data-row="loading">
+              <td colspan="7" class="text-center py-6 text-slate-400">
+                กำลังโหลด...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: CREATE / EDIT -->
+  <div
+    id="modalOverlay"
+    class="fixed inset-0 bg-black/30 flex items-center justify-center z-20 hidden"
+    aria-modal="true"
+    role="dialog"
+  >
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 relative card-border">
+      <button
+        id="btnCloseModal"
+        class="absolute top-3 right-3 text-slate-400 hover:text-slate-600"
+        aria-label="ปิดหน้าต่าง"
+      >
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <h2 id="modalTitle" class="text-lg font-bold text-slate-900 mb-4">
+        เพิ่มคำขอใบรับรอง
+      </h2>
+
+      <form id="requestForm" class="space-y-4">
+        <div class="grid grid-cols-1 gap-3">
+          <label class="text-sm block">
+            ชื่อ-นามสกุล
+            <input
+              type="text"
+              name="fullname"
+              class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-slate-50"
+              required
+            />
+          </label>
+          <label class="text-sm block">
+            LINE Name
+            <input
+              type="text"
+              name="displayName"
+              class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-slate-50"
+            />
+          </label>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label class="text-sm block">
+            เบอร์โทร
+            <input
+              type="tel"
+              name="phone"
+              class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-slate-50"
+            />
+          </label>
+          <label class="text-sm block">
+            สถานะ
+            <select
+              name="status"
+              class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-slate-50"
+            >
+              <option value="pending">รออนุมัติ</option>
+              <option value="approved">ส่งใบรับรองแล้ว</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="text-sm block">
+          อาการ / รายละเอียด
+          <textarea
+            name="symptoms"
+            rows="3"
+            class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-slate-50"
+          ></textarea>
+        </label>
+
+        <div class="pt-3 flex justify-end gap-2">
+          <button
+            type="button"
+            id="btnCancelModal"
+            class="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-600 hover:bg-slate-50"
+          >
+            ยกเลิก
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2 rounded-lg btn-pink text-sm font-semibold shadow-sm"
+          >
+            บันทึกข้อมูล
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCRIPT -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      query,
+      getDocs,
+      orderBy,
+      addDoc,
+      doc,
+      updateDoc,
+      deleteDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+
+    // 👇 ชี้ไปที่เซิร์ฟเวอร์ Node/Express (ngrok เดียวกับ requestCertificate-full.html)
+    const API_BASE = "https://semimechanical-subovoid-hue.ngrok-free.dev";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzRiHElsEa_PFOf90mJXzVELsuHwG5_fM",
+      authDomain: "medeasehosting.firebaseapp.com",
+      projectId: "medeasehosting",
+      storageBucket: "medeasehosting.appspot.com"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const dataTable        = document.getElementById("dataTable");
+    const countRequestsEl  = document.getElementById("countRequests");
+    const countApprovedEl  = document.getElementById("countApproved");
+    const countPendingEl   = document.getElementById("countPending");
+    const adminEmailEl     = document.getElementById("adminEmail");
+    const searchBox        = document.getElementById("searchBox");
+    const btnLogout        = document.getElementById("btnLogout");
+    const btnAdd           = document.getElementById("btnAdd");
+
+    const modalOverlay     = document.getElementById("modalOverlay");
+    const modalTitle       = document.getElementById("modalTitle");
+    const btnCloseModal    = document.getElementById("btnCloseModal");
+    const btnCancelModal   = document.getElementById("btnCancelModal");
+    const requestForm      = document.getElementById("requestForm");
+
+    let currentEditId = null;
+    const cache = new Map();
+
+    // ===== Helper: Admin API (approve / reject) =====
+    async function callAdminCertApi(path, body = {}) {
+      const user = auth.currentUser;
+      if (!user) throw new Error("กรุณาล็อกอินแอดมินก่อน");
+
+      const token = await user.getIdToken();
+      const res = await fetch(`${API_BASE}${path}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {}
+
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      return data;
+    }
+
+    // ===== Logout =====
+    btnLogout.addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+        window.location.href = "login.html";
+      } catch (err) {
+        console.error(err);
+        alert("ออกจากระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      }
+    });
+
+    // ===== Auth Guard + Load =====
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "login.html?next=/admin-certificates.html";
+        return;
+      }
+
+      try {
+        const token = await user.getIdTokenResult();
+
+        if (!token.claims.admin) {
+          alert("คุณไม่มีสิทธิ์เข้าถึงหน้านี้");
+          window.location.href = "index.html";
+          return;
+        }
+
+        adminEmailEl.textContent = user.email || "-";
+        await loadRequests();
+      } catch (err) {
+        console.error("auth error", err);
+        alert("ไม่สามารถตรวจสอบสิทธิ์ได้ กรุณาลองใหม่");
+      }
+    });
+
+    // ===== Load Requests =====
+    async function loadRequests() {
+      try {
+        dataTable.innerHTML = `
+          <tr data-row="loading">
+            <td colspan="7" class="text-center py-6 text-slate-400">
+              กำลังโหลด...
+            </td>
+          </tr>
+        `;
+
+        const qSnap = await getDocs(
+          query(collection(db, "certificates_requests"), orderBy("createdAt", "desc"))
+        );
+
+        cache.clear();
+        let html = "";
+        let countAll = 0;
+        let countApproved = 0;
+        let countPending = 0;
+
+        qSnap.forEach((docSnap, i) => {
+          const d  = docSnap.data() || {};
+          const id = docSnap.id;
+          cache.set(id, d);
+
+          countAll++;
+          const status = d.status || "pending";
+          if (status === "approved") countApproved++;
+          else if (status === "pending") countPending++;
+
+          let badgeClass = "badge-pending";
+          let statusText = "รออนุมัติ";
+          if (status === "approved") {
+            badgeClass = "badge-approved";
+            statusText = "ส่งใบรับรองแล้ว";
+          } else if (status === "cancelled" || status === "rejected") {
+            badgeClass = "badge-rejected";
+            statusText = "ไม่อนุมัติ / ยกเลิก";
+          }
+
+          const isDone =
+            status === "approved" ||
+            status === "cancelled" ||
+            status === "rejected";
+
+          const shortSym =
+            d.symptoms && d.symptoms.length > 60
+              ? d.symptoms.slice(0, 60) + "..."
+              : (d.symptoms || "-");
+
+          html += `
+            <tr class="hover:bg-slate-50 border-b border-slate-100 transition" data-row="item" data-id="${id}">
+              <td class="py-2 px-3">${i + 1}</td>
+              <td class="py-2 px-3">${d.fullname || "-"}</td>
+              <td class="py-2 px-3">${d.displayName || "-"}</td>
+              <td class="py-2 px-3">${d.phone || "-"}</td>
+              <td class="py-2 px-3 max-w-xs whitespace-normal">${shortSym}</td>
+              <td class="py-2 px-3">
+                <span class="px-2 py-1 rounded-full text-xs font-semibold ${badgeClass} status-badge">
+                  ${statusText}
+                </span>
+              </td>
+              <td class="py-2 px-3">
+                <div class="flex flex-wrap gap-2">
+                  <a
+                    href="admin-certificates-view.html?id=${id}"
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-sky-100 text-sky-800 hover:bg-sky-200 shadow-sm"
+                  >
+                    👁️ ดูรายละเอียด
+                  </a>
+                  <button
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200 shadow-sm btn-approve-row"
+                    data-action="approve"
+                    data-id="${id}"
+                    ${isDone ? "disabled" : ""}
+                  >
+                    ✅ อนุมัติ
+                  </button>
+                  <button
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-rose-100 text-rose-700 hover:bg-rose-200 shadow-sm btn-reject-row"
+                    data-action="reject"
+                    data-id="${id}"
+                    ${isDone ? "disabled" : ""}
+                  >
+                    ❌ ไม่อนุมัติ
+                  </button>
+                  <button
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 shadow-sm"
+                    data-action="delete"
+                    data-id="${id}"
+                  >
+                    🗑️ ลบ
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        });
+
+        if (!html) {
+          dataTable.innerHTML = `
+            <tr data-row="empty">
+              <td colspan="7" class="text-center py-6 text-slate-400">
+                ไม่มีคำร้อง
+              </td>
+            </tr>
+          `;
+        } else {
+          dataTable.innerHTML = html;
+        }
+
+        countRequestsEl.textContent = countAll;
+        countApprovedEl.textContent = countApproved;
+        countPendingEl.textContent = countPending;
+      } catch (err) {
+        console.error("loadRequests error", err);
+        dataTable.innerHTML = `
+          <tr data-row="error">
+            <td colspan="7" class="text-center py-6 text-rose-500">
+              โหลดข้อมูลไม่สำเร็จ กรุณารีเฟรชหน้าอีกครั้ง
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    // ===== SEARCH FILTER =====
+    searchBox.addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      const rows = Array.from(dataTable.querySelectorAll('tr[data-row="item"]'));
+      if (!rows.length) return;
+
+      rows.forEach((row) => {
+        const match = Array.from(row.cells).some((td) =>
+          td.textContent.toLowerCase().includes(q)
+        );
+        row.style.display = match ? "" : "none";
+      });
+    });
+
+    // ===== MODAL =====
+    function openModal(mode, id = null) {
+      currentEditId = id;
+      modalOverlay.classList.remove("hidden");
+      document.body.classList.add("overflow-hidden");
+
+      if (mode === "create") {
+        modalTitle.textContent = "เพิ่มคำขอใบรับรองใหม่";
+        requestForm.fullname.value    = "";
+        requestForm.displayName.value = "";
+        requestForm.phone.value       = "";
+        requestForm.symptoms.value    = "";
+        requestForm.status.value      = "pending";
+      } else if (mode === "edit" && id) {
+        modalTitle.textContent = "แก้ไขข้อมูลคำขอใบรับรอง";
+        const d = cache.get(id) || {};
+        requestForm.fullname.value    = d.fullname || "";
+        requestForm.displayName.value = d.displayName || "";
+        requestForm.phone.value       = d.phone || "";
+        requestForm.symptoms.value    = d.symptoms || "";
+        requestForm.status.value      = d.status || "pending";
+      }
+    }
+
+    function closeModal() {
+      modalOverlay.classList.add("hidden");
+      document.body.classList.remove("overflow-hidden");
+      currentEditId = null;
+    }
+
+    btnAdd.addEventListener("click", () => openModal("create"));
+    btnCloseModal.addEventListener("click", closeModal);
+    btnCancelModal.addEventListener("click", closeModal);
+    modalOverlay.addEventListener("click", (e) => {
+      if (e.target === modalOverlay) closeModal();
+    });
+
+    // ===== FORM: CREATE / UPDATE =====
+    requestForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const payload = {
+        fullname:    requestForm.fullname.value.trim(),
+        displayName: requestForm.displayName.value.trim(),
+        phone:       requestForm.phone.value.trim(),
+        symptoms:    requestForm.symptoms.value.trim(),
+        status:      requestForm.status.value,
+      };
+
+      try {
+        if (!payload.fullname) {
+          alert("กรุณากรอกชื่อ-นามสกุล");
+          return;
+        }
+
+        const user = auth.currentUser;
+        if (!user) {
+          alert("ต้องเข้าสู่ระบบก่อนจึงจะบันทึกได้");
+          return;
+        }
+
+        if (currentEditId) {
+          const ref = doc(db, "certificates_requests", currentEditId);
+          await updateDoc(ref, {
+            ...payload,
+            updatedAt: serverTimestamp(),
+          });
+        } else {
+          await addDoc(collection(db, "certificates_requests"), {
+            ...payload,
+            byUserUid: user.uid,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        }
+
+        closeModal();
+        await loadRequests();
+      } catch (err) {
+        console.error("save error", err);
+        alert("บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่");
+      }
+    });
+
+    // ===== TABLE BUTTONS: approve / reject / delete =====
+    dataTable.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+
+      const id = btn.dataset.id;
+      const action = btn.dataset.action;
+
+      if (action === "delete") {
+        if (!confirm("ยืนยันการลบคำขอนี้หรือไม่?")) return;
+        try {
+          await deleteDoc(doc(db, "certificates_requests", id));
+          await loadRequests();
+        } catch (err) {
+          console.error("delete error", err);
+          alert("ลบข้อมูลไม่สำเร็จ กรุณาลองใหม่");
+        }
+        return;
+      }
+
+      if (action === "approve") {
+        if (!confirm("ยืนยันการอนุมัติคำขอใบรับรองนี้หรือไม่ ?")) return;
+        try {
+          btn.disabled = true;
+          await callAdminCertApi(`/admin/certificates/${id}/approve`);
+          alert("✅ อนุมัติสำเร็จแล้ว สถานะคำขอถูกเปลี่ยนเป็น 'approved' แล้วค่ะ");
+          await loadRequests();
+        } catch (err) {
+          console.error(err);
+          alert("เกิดข้อผิดพลาดในการอนุมัติ: " + err.message);
+          btn.disabled = false;
+        }
+        return;
+      }
+
+      if (action === "reject") {
+        const reason = prompt("กรุณาระบุเหตุผลที่ไม่อนุมัติ / ยกเลิก:", "");
+        if (reason === null) return;
+        try {
+          btn.disabled = true;
+          await callAdminCertApi(`/admin/certificates/${id}/reject`, { reason });
+          alert("✅ บันทึกการไม่อนุมัติเรียบร้อยแล้ว ระบบได้แจ้งผู้ใช้ทาง LINE แล้วค่ะ");
+          await loadRequests();
+        } catch (err) {
+          console.error(err);
+          alert("เกิดข้อผิดพลาดในการไม่อนุมัติ: " + err.message);
+          btn.disabled = false;
+        }
+      }
+    });
+  </script>
+</body>
+</html>

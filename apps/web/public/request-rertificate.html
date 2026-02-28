@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ขอใบรับรองแพทย์ - MedEase</title>
+
+  <!-- LIFF -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet"/>
+
+  <style>
+    body {
+      font-family: 'Sarabun', 'DM Sans', sans-serif;
+      background: linear-gradient(135deg, #e3f6fc 0%, #fff1fb 60%, #e0fbe7 100%);
+      min-height: 100vh;
+    }
+    .form-card {
+      box-shadow: 0 6px 32px 0 rgba(170,220,220,0.13), 0 1.5px 6px 0 rgba(244,191,222,0.11);
+      border: 2px solid #eaf5f8;
+    }
+    label {
+      font-weight: 500;
+      margin-bottom: 4px;
+      display: block;
+      color: #24878e;
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-center px-4 py-10 text-gray-700">
+
+  <div class="form-card bg-white w-full max-w-2xl p-8 rounded-2xl shadow-xl mb-8">
+    <!-- header -->
+    <div class="flex flex-col items-center mb-7">
+      <img src="Arisa.png" alt="MedEase Logo"
+           class="w-14 h-14 mb-2 rounded-xl shadow bg-white object-cover"/>
+      <h1 class="text-3xl font-bold text-pink-400 mb-2">ขอใบรับรองแพทย์</h1>
+      <p class="text-base text-cyan-600 text-center">
+        ระบบขอใบรับรองแพทย์สำหรับนิสิต/บุคลากร<br>
+        <span class="text-green-500">เข้าสู่ระบบ LINE ปลอดภัย ส่งตรงถึงแพทย์</span>
+      </p>
+    </div>
+
+    <!-- STEP 1: LINE + email -->
+    <div id="step-login" class="flex flex-col items-center space-y-4">
+      <button id="lineLoginBtn"
+        class="bg-gradient-to-r from-green-300 to-cyan-200 text-green-800 px-6 py-3 rounded-full font-bold shadow hover:from-cyan-100 hover:to-green-100 mb-2 transition flex items-center gap-2 text-lg">
+        <i class="fa-brands fa-line text-2xl"></i> &nbsp;เข้าสู่ระบบด้วย LINE
+      </button>
+
+      <form id="emailForm" class="w-full max-w-xs space-y-3 hidden">
+        <label class="block text-sm font-semibold text-gray-600 mb-1">
+          อีเมลที่ต้องการรับใบรับรองแพทย์ <span class="text-pink-400">*</span>
+        </label>
+        <input type="email" id="userEmail" required
+          class="w-full border border-cyan-200 px-4 py-2 rounded-lg focus:ring-2 focus:ring-green-200 outline-none" />
+        <button type="submit"
+          class="w-full bg-green-600 text-white py-2 rounded-xl hover:bg-green-700 font-semibold shadow transition">
+          ยืนยันอีเมล & ถัดไป
+        </button>
+      </form>
+
+      <p id="loginStatus" class="text-center text-pink-400 mt-2 text-sm"></p>
+    </div>
+
+    <!-- STEP 2: main form -->
+    <form id="mainForm" class="space-y-5 hidden">
+      <div class="text-sm text-green-700 mb-2 flex items-center gap-2">
+        <i class="fa-solid fa-circle-user text-pink-400 text-xl"></i>
+        <span id="profileName"></span>
+      </div>
+
+      <div>
+        <label for="fullname">ชื่อ-นามสกุล <span class="text-pink-400">*</span></label>
+        <input id="fullname" name="fullname" type="text" required
+               class="w-full border border-pink-200 px-5 py-3 rounded-xl shadow-sm focus:ring-2 focus:ring-cyan-100 focus:outline-none" />
+      </div>
+
+      <div>
+        <label for="idcard">เลขบัตรประชาชน <span class="text-pink-400">*</span></label>
+        <input id="idcard" name="idcard" type="text" required
+               class="w-full border border-cyan-200 px-5 py-3 rounded-xl shadow-sm focus:ring-2 focus:ring-cyan-100 focus:outline-none" />
+      </div>
+
+      <div>
+        <label for="phone">เบอร์โทรศัพท์ <span class="text-pink-400">*</span></label>
+        <input id="phone" name="phone" type="text" required
+               class="w-full border border-green-200 px-5 py-3 rounded-xl shadow-sm focus:ring-2 focus:ring-green-100 focus:outline-none" />
+      </div>
+
+      <div>
+        <label for="symptoms">อาการ / เหตุผล <span class="text-pink-400">*</span></label>
+        <textarea id="symptoms" name="symptoms" required rows="3"
+                  class="w-full border border-pink-100 px-5 py-3 rounded-xl shadow-sm resize-none focus:ring-2 focus:ring-pink-50"></textarea>
+      </div>
+
+      <div>
+        <label for="diagnosis">วินิจฉัยโรค / คำแนะนำแพทย์ <span class="text-gray-400">(ถ้ามี)</span></label>
+        <textarea id="diagnosis" name="diagnosis" rows="2"
+                  class="w-full border border-cyan-100 px-5 py-3 rounded-xl shadow-sm resize-none focus:ring-2 focus:ring-cyan-50"></textarea>
+      </div>
+
+      <div>
+        <label for="daysOff">จำนวนวันที่ควรหยุดพัก</label>
+        <input id="daysOff" name="daysOff" type="number" min="0"
+               class="w-full border border-green-100 px-5 py-3 rounded-xl shadow-sm" />
+      </div>
+
+      <div>
+        <label for="patientType">ประเภทผู้ป่วย</label>
+        <select id="patientType" name="patientType"
+                class="w-full border border-cyan-200 px-5 py-3 rounded-xl shadow-sm bg-white">
+          <option value="ผู้ป่วยนอก">ผู้ป่วยนอก</option>
+          <option value="ผู้ป่วยใน">ผู้ป่วยใน</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="doctorName">ชื่อแพทย์ผู้ตรวจ <span class="text-gray-400">(ถ้ามี)</span></label>
+        <input id="doctorName" name="doctorName" type="text"
+               class="w-full border border-cyan-100 px-5 py-3 rounded-xl shadow-sm" />
+      </div>
+
+      <button type="submit"
+              class="w-full bg-gradient-to-r from-pink-200 to-cyan-100 text-pink-800 py-3 rounded-full hover:bg-pink-100 hover:text-cyan-700 text-lg font-semibold shadow-md transition">
+        ส่งคำร้อง
+      </button>
+
+      <p id="statusBox" class="text-center text-sm"></p>
+    </form>
+  </div>
+
+  <script type="module">
+    const LIFF_ID = "2007195940-B1XmWkLD";
+
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      serverTimestamp
+    } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+    import {
+      getAuth,
+      signInAnonymously,
+      onAuthStateChanged
+    } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+
+    // ===== Firebase init =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzRiHElsEa_PFOf90mJXzVELsuHwG5_fM",
+      authDomain: "medeasehosting.firebaseapp.com",
+      projectId: "medeasehosting",
+      storageBucket: "medeasehosting.appspot.com",
+      messagingSenderId: "527953102643",
+      appId: "1:527953102643:web:bce13ed6305ef583016046"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let lineProfile = null;
+    let userEmail = null;
+    let byUserUid = null; // ใช้เก็บ uid จาก Firebase Auth (anonymous)
+
+    // ===== Firebase Auth (anonymous) =====
+    async function initFirebaseAuth() {
+      try {
+        // ถ้ายังไม่มี user ให้ sign in แบบ anonymous
+        if (!auth.currentUser) {
+          await signInAnonymously(auth);
+        }
+      } catch (err) {
+        console.error("anonymous sign-in error:", err);
+      }
+
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          byUserUid = user.uid;
+          console.log("Auth UID:", byUserUid);
+        }
+      });
+    }
+    initFirebaseAuth();
+
+    // ===== LIFF Login =====
+    async function startLiff() {
+      try {
+        await liff.init({ liffId: LIFF_ID });
+
+        if (!liff.isLoggedIn()) {
+          document.getElementById("lineLoginBtn").onclick = () => liff.login();
+        } else {
+          lineProfile = await liff.getProfile();
+          document.getElementById("loginStatus").textContent =
+            `สวัสดี ${lineProfile.displayName} 👋`;
+          document.getElementById("lineLoginBtn").classList.add("hidden");
+          document.getElementById("emailForm").classList.remove("hidden");
+        }
+      } catch (err) {
+        console.error("LIFF init error:", err);
+        document.getElementById("loginStatus").textContent =
+          "ไม่สามารถเชื่อมต่อ LINE ได้ กรุณาปิดแล้วเข้าใหม่อีกครั้งค่ะ";
+      }
+    }
+    startLiff();
+
+    // ===== Step 1: email =====
+    document.getElementById("emailForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const email = document.getElementById("userEmail").value.trim();
+      if (!email.match(/.+@.+\..+/)) {
+        document.getElementById("loginStatus").textContent = "โปรดกรอกอีเมลที่ถูกต้อง";
+        return;
+      }
+      userEmail = email;
+
+      document.getElementById("profileName").textContent =
+        `${lineProfile.displayName} (${userEmail})`;
+      document.getElementById("step-login").classList.add("hidden");
+      document.getElementById("mainForm").classList.remove("hidden");
+    });
+
+    // ===== Step 2: submit form =====
+    document.getElementById("mainForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const statusBox = document.getElementById("statusBox");
+      const submitBtn = form.querySelector('button[type="submit"]');
+
+      // กันกรณี auth ยังไม่พร้อม
+      if (!byUserUid) {
+        alert("ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง");
+        return;
+      }
+      if (!lineProfile || !userEmail) {
+        alert("กรุณาเข้าสู่ระบบ LINE และกรอกอีเมลให้ครบ");
+        location.reload();
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "⏳ กำลังส่ง...";
+
+      const data = {
+        // สำหรับระบบ LIFF / แพทย์
+        lineUserId:   lineProfile.userId,
+        displayName:  lineProfile.displayName,
+        pictureUrl:   lineProfile.pictureUrl ?? "",
+        email:        userEmail,
+
+        // ฟิลด์หลักที่ admin-certificates.html ใช้
+        fullname:     form.fullname.value.trim(),
+        phone:        form.phone.value.trim(),
+        symptoms:     form.symptoms.value.trim(),
+
+        // ฟิลด์เสริม
+        idcard:       form.idcard.value.trim(),
+        diagnosis:    form.diagnosis.value.trim(),
+        daysOff:      form.daysOff.value.trim(),
+        patientType:  form.patientType.value,
+        doctorName:   form.doctorName.value.trim(),
+
+        // meta สำหรับ Rules + Dashboard
+        byUserUid:    byUserUid,
+        status:       "pending",          // เริ่มต้น = รออนุมัติ
+        createdAt:    serverTimestamp(),
+        updatedAt:    serverTimestamp(),
+      };
+
+      try {
+        await addDoc(collection(db, "certificates_requests"), data);
+        form.reset();
+        statusBox.textContent =
+          "✅ ส่งคำร้องเรียบร้อยแล้ว กรุณารอแพทย์ตรวจสอบ";
+        statusBox.className = "text-green-600 text-center mt-4";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (err) {
+        console.error("addDoc error:", err);
+        statusBox.textContent =
+          "❌ เกิดข้อผิดพลาดในการส่งคำร้อง กรุณาลองใหม่อีกครั้ง";
+        statusBox.className = "text-red-600 text-center mt-4";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = "ส่งคำร้อง";
+    });
+  </script>
+
+  <script src="https://kit.fontawesome.com/1a3ec3aa3c.js" crossorigin="anonymous"></script>
+</body>
+</html>

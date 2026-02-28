@@ -1,0 +1,18 @@
+
+apps/api/secrets/*.json
+**/*adminsdk*.json
+node_modules
+
+# Secrets (service accounts)
+*-firebase-adminsdk-*.json
+**/*-firebase-adminsdk-*.json
+serviceAccountKey.json
+**/serviceAccountKey.json
+
+
+# Secrets (service accounts)
+*-firebase-adminsdk-*.json
+**/*-firebase-adminsdk-*.json
+serviceAccountKey.json
+**/serviceAccountKey.json
+

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>รายละเอียดข่าวสุขภาพ - MedEase</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    body { font-family: 'Sarabun', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+    /* โทนพื้นหลังแบบ index.html */
+    .hero-bg{
+      background:
+        radial-gradient(circle at 0% 0%, #ffe4f3 0, transparent 55%),
+        radial-gradient(circle at 100% 0%, #dbeafe 0, transparent 55%),
+        radial-gradient(circle at 50% 120%, #dcfce7 0, #f8fafc 60%);
+      min-height: 100vh;
+    }
+
+    .fade-in {
+      opacity: 0;
+      transform: translateY(14px);
+      animation: fadeIn 0.55s cubic-bezier(.22,1,.36,1) forwards;
+    }
+    @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+    .detail-card {
+      box-shadow: 0 10px 30px rgba(2, 132, 199, 0.08);
+      border: 1px solid rgba(255,255,255,0.55);
+    }
+
+    /* ปุ่มโทนพาสเทล */
+    .pill {
+      border: 1px solid rgba(226,232,240,1);
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transition: transform .08s ease, background .15s ease;
+    }
+    .pill:hover { background: rgba(248,250,252,1); }
+    .pill:active { transform: scale(.99); }
+  </style>
+</head>
+
+<body class="hero-bg text-slate-700">
+  <!-- Topbar (sticky glass) -->
+  <header class="sticky top-0 z-50 border-b border-white/60 bg-white/75 backdrop-blur">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <button
+        onclick="history.back()"
+        class="pill inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700"
+        aria-label="กลับหน้าเดิม"
+      >
+        ← กลับหน้าเดิม
+      </button>
+
+      <a href="/medease-health-news.html" class="text-xs sm:text-sm font-semibold text-sky-600 hover:text-sky-700">
+        ไปหน้าข่าวทั้งหมด →
+      </a>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-5 sm:py-7">
+    <!-- Title / meta + content card -->
+    <section class="detail-card rounded-3xl bg-white/90 backdrop-blur p-5 sm:p-7 fade-in">
+      <div id="news-detail" class="space-y-4"></div>
+    </section>
+
+    <!-- Action bar -->
+    <section class="mt-4 sm:mt-5 fade-in">
+      <div class="flex flex-wrap gap-2">
+        <button
+          onclick="navigator.clipboard.writeText(window.location.href)"
+          class="pill inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700"
+        >
+          📋 คัดลอกลิงก์
+        </button>
+
+        <a
+          href="#"
+          id="fb-share"
+          target="_blank"
+          class="pill inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700"
+          rel="noreferrer"
+        >
+          👍 แชร์ Facebook
+        </a>
+
+        <a
+          href="#"
+          id="line-share"
+          target="_blank"
+          class="pill inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700"
+          rel="noreferrer"
+        >
+          💬 แชร์ LINE
+        </a>
+
+        <button
+          onclick="window.print()"
+          class="pill inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700"
+        >
+          🖨️ พิมพ์ข่าว
+        </button>
+
+        <button
+          onclick="document.documentElement.requestFullscreen()"
+          class="pill inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700"
+        >
+          ⛶ เต็มจอ
+        </button>
+      </div>
+
+      <p class="mt-3 text-[11px] text-slate-500">
+        * หากเปิดในมือถือ แนะนำ “เต็มจอ” เพื่ออ่านง่ายขึ้น
+      </p>
+    </section>
+
+    <div class="pb-8 text-center text-[11px] text-slate-500 mt-6">
+      MedEase • Health News • Detail
+    </div>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzRiHElsEa_PFOf90mJXzVELsuHwG5_fM",
+      authDomain: "medeasehosting.firebaseapp.com",
+      projectId: "medeasehosting",
+      storageBucket: "medeasehosting.firebasestorage.app",
+      messagingSenderId: "527953102643",
+      appId: "1:527953102643:web:bce13ed6305ef583016046"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const params = new URLSearchParams(location.search);
+    const newsId = params.get("id");
+    const container = document.getElementById("news-detail");
+
+    async function loadNewsDetail() {
+      if (!newsId) {
+        container.innerHTML = "<p class='text-rose-600 font-semibold'>ไม่พบข่าว</p>";
+        return;
+      }
+
+      const docRef = doc(db, "news", newsId);
+
+      // เพิ่มยอดวิว (ถ้าทำได้)
+      try {
+        await updateDoc(docRef, { views: increment(1) });
+      } catch (e) {
+        // เงียบไว้ถ้า error (เช่น field ยังไม่มี)
+      }
+
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        container.innerHTML = "<p class='text-rose-600 font-semibold'>ไม่พบข่าวในระบบ</p>";
+        return;
+      }
+
+      const data = docSnap.data();
+      let mediaHTML = "";
+
+      switch (data.mediaType) {
+        case "youtube":
+        case "tiktok":
+          mediaHTML = `
+            <div class="w-full aspect-video rounded-2xl overflow-hidden mb-4 bg-slate-100">
+              <iframe src="${data.media}" class="w-full h-full rounded-2xl" frameborder="0" allowfullscreen></iframe>
+            </div>`;
+          break;
+        case "pdf":
+        case "doc":
+          mediaHTML = `
+            <iframe src="${data.media}" type="application/pdf" class="w-full h-[520px] mb-4 rounded-2xl border border-slate-100 bg-white"></iframe>`;
+          break;
+        default:
+          mediaHTML = `
+            <img src="${data.media}" alt="ภาพข่าว" class="w-full max-h-[420px] object-cover rounded-2xl mb-4 shadow-sm border border-slate-100" />`;
+      }
+
+      const date = data.createdAt?.toDate?.() || new Date();
+      const formattedDate = date.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+      const views = data.views ?? 0;
+
+      let html = `
+        <div class="flex flex-col gap-2">
+          <div class="inline-flex items-center gap-2">
+            <span class="inline-flex items-center rounded-full bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-600 border border-pink-100">
+              ข่าวสุขภาพ
+            </span>
+            <span class="text-[11px] text-slate-500">${formattedDate}</span>
+            <span class="text-[11px] text-slate-500">•</span>
+            <span class="text-[11px] text-slate-500">${views} ครั้ง</span>
+          </div>
+
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-snug">
+            <span class="text-pink-500">${data.topic}</span>
+          </h1>
+        </div>
+
+        ${mediaHTML}
+      `;
+
+      if (Array.isArray(data.detail)) {
+        html += `<div class="space-y-2 mt-2">` +
+          data.detail.map(line =>
+            `<p class="text-slate-700 text-base leading-relaxed">• ${line}</p>`
+          ).join("") +
+          `</div>`;
+      }
+
+      container.innerHTML = html;
+
+      // ตั้งค่าลิงก์แชร์
+      const shareURL = window.location.href;
+      document.getElementById("fb-share").href =
+        `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareURL)}`;
+      document.getElementById("line-share").href =
+        `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareURL)}`;
+    }
+
+    loadNewsDetail();
+  </script>
+</body>
+</html>

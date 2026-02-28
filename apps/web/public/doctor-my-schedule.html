@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>ตารางงานของฉัน – MedEase Doctor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    body {
+      font-family: 'Sarabun', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    /* โทน/พื้นหลังให้คล้าย index.html */
+    .hero-bg {
+      background:
+        radial-gradient(circle at 0% 0%, #ffe4f3 0, transparent 55%),
+        radial-gradient(circle at 100% 0%, #dbeafe 0, transparent 55%),
+        radial-gradient(circle at 50% 120%, #dcfce7 0, #f8fafc 60%);
+      min-height: 100vh;
+    }
+
+    /* เงานุ่ม */
+    .soft-shadow {
+      box-shadow: 0 10px 30px rgba(2, 132, 199, 0.08);
+    }
+  </style>
+
+  <!-- Firebase (Doctor view) -->
+  <script type="module">
+    import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      query,
+      where,
+      orderBy,
+      getDocs,
+      Timestamp,
+      limit
+    } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzRiHElsEa_PFOf90mJXzVELsuHwG5_fM",
+      authDomain: "medeasehosting.firebaseapp.com",
+      projectId: "medeasehosting",
+    };
+
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    // DOM
+    const doctorEmailEl   = document.getElementById("doctorEmail");
+    const btnLogout       = document.getElementById("btnLogout");
+    const todayBox        = document.getElementById("todayBox");
+    const nextShiftBox    = document.getElementById("nextShiftBox");
+    const tableBody       = document.getElementById("scheduleTableBody");
+    const rangeLabel      = document.getElementById("rangeLabel");
+    const btn7Days        = document.getElementById("btn7Days");
+    const btn30Days       = document.getElementById("btn30Days");
+
+    let rangeDays = 7; // default ดูล่วงหน้า 7 วัน
+
+    function pad2(n) {
+      return n.toString().padStart(2, "0");
+    }
+
+    function toThaiDateTime(d) {
+      return d.toLocaleString("th-TH", {
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
+    function toThaiDate(d) {
+      return d.toLocaleDateString("th-TH", {
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    }
+
+    async function loadMySchedules(user) {
+      const uid = user.uid;
+
+      // ช่วงวันนี้ → วันนี้ + rangeDays
+      const now = new Date();
+      const start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+
+      const end = new Date(start);
+      end.setDate(start.getDate() + rangeDays);
+      end.setHours(23, 59, 59, 999);
+
+      rangeLabel.textContent =
+        `ช่วงวันนี้ – ${end.toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "numeric" })}`;
+
+      todayBox.innerHTML = `<p class="text-sm text-slate-500">กำลังโหลดข้อมูลเวรวันนี้...</p>`;
+      nextShiftBox.innerHTML = `<p class="text-sm text-slate-500">กำลังค้นหาเวรถัดไป...</p>`;
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="6" class="px-3 py-4 text-center text-sm text-slate-500">
+            กำลังโหลดตารางเวร...
+          </td>
+        </tr>
+      `;
+
+      try {
+        const qRef = query(
+          collection(db, "doctor_schedules"),
+          where("doctorUid", "==", uid),
+          where("startAt", ">=", Timestamp.fromDate(start)),
+          where("startAt", "<=", Timestamp.fromDate(end)),
+          orderBy("startAt", "asc"),
+          limit(100)
+        );
+
+        const snap = await getDocs(qRef);
+        if (snap.empty) {
+          todayBox.innerHTML = `<p class="text-sm text-slate-500">วันนี้คุณไม่มีเวร</p>`;
+          nextShiftBox.innerHTML = `<p class="text-sm text-slate-500">ยังไม่มีเวรถัดไปในช่วง ${rangeDays} วันถัดไป</p>`;
+          tableBody.innerHTML = `
+            <tr>
+              <td colspan="6" class="px-3 py-4 text-center text-sm text-slate-500">
+                ไม่พบตารางเวรในช่วงที่กำหนด
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        const nowTs = now.getTime();
+        const todayStr = start.toISOString().slice(0,10);
+
+        const allShifts = [];
+        snap.forEach(docSnap => {
+          const data = docSnap.data();
+          const startAt = data.startAt?.toDate ? data.startAt.toDate() : null;
+          const endAt   = data.endAt?.toDate ? data.endAt.toDate() : null;
+
+          allShifts.push({
+            id: docSnap.id,
+            ...data,
+            startAt,
+            endAt
+          });
+        });
+
+        // 1) เวรวันนี้
+        const todayShifts = allShifts.filter(s => {
+          if (!s.startAt) return false;
+          return s.startAt.toISOString().slice(0,10) === todayStr;
+        });
+
+        if (todayShifts.length === 0) {
+          todayBox.innerHTML = `<p class="text-sm text-slate-500">วันนี้คุณไม่มีเวร</p>`;
+        } else {
+          const items = todayShifts.map(s => {
+            const t = s.startAt;
+            const timeText = `${pad2(t.getHours())}:${pad2(t.getMinutes())}`;
+            const loc = s.location || "-";
+            const type = s.shiftType || "-";
+            return `<li class="text-sm text-slate-700">
+              <span class="font-semibold">${timeText}</span> – ${type} @ ${loc}
+            </li>`;
+          }).join("");
+          todayBox.innerHTML = `
+            <p class="text-xs font-semibold text-emerald-700 mb-1">เวรวันนี้</p>
+            <ul class="space-y-1">${items}</ul>
+          `;
+        }
+
+        // 2) เวรถัดไป (หลังตอนนี้)
+        const upcoming = allShifts
+          .filter(s => s.startAt && s.startAt.getTime() > nowTs)
+          .sort((a,b) => a.startAt - b.startAt);
+
+        if (upcoming.length === 0) {
+          nextShiftBox.innerHTML = `<p class="text-sm text-slate-500">ยังไม่มีเวรถัดไปในช่วง ${rangeDays} วันถัดไป</p>`;
+        } else {
+          const s = upcoming[0];
+          const dtText = toThaiDateTime(s.startAt);
+          const loc = s.location || "-";
+          const type = s.shiftType || "-";
+          const note = s.note || "-";
+
+          nextShiftBox.innerHTML = `
+            <p class="text-xs font-semibold text-sky-700 mb-1">เวรถัดไปของคุณ</p>
+            <p class="text-sm text-slate-700"><span class="font-semibold">${dtText}</span></p>
+            <p class="text-xs text-slate-600 mt-1">ประเภทเวร: ${type}</p>
+            <p class="text-xs text-slate-600">สถานที่: ${loc}</p>
+            <p class="text-xs text-slate-500 mt-1 truncate">หมายเหตุ: ${note}</p>
+          `;
+        }
+
+        // 3) ตารางเวรของฉัน (ช่วง rangeDays วัน)
+        const rows = allShifts.map(s => {
+          const dText = s.startAt ? toThaiDate(s.startAt) : (s.date || "-");
+          let timeText = "-";
+          if (s.startTime && s.endTime) {
+            timeText = `${s.startTime}–${s.endTime}`;
+          } else if (s.startAt && s.endAt) {
+            timeText =
+              `${pad2(s.startAt.getHours())}:${pad2(s.startAt.getMinutes())}–` +
+              `${pad2(s.endAt.getHours())}:${pad2(s.endAt.getMinutes())}`;
+          }
+
+          const type = s.shiftType || "-";
+          const loc  = s.location || "-";
+          const note = s.note || "-";
+          const status = s.status || "confirmed";
+
+          return `
+            <tr class="hover:bg-slate-50/60">
+              <td class="px-3 py-2 text-sm whitespace-nowrap">${dText}</td>
+              <td class="px-3 py-2 text-sm whitespace-nowrap">${timeText}</td>
+              <td class="px-3 py-2 text-sm">${type}</td>
+              <td class="px-3 py-2 text-sm">${loc}</td>
+              <td class="px-3 py-2 text-sm">${note}</td>
+              <td class="px-3 py-2 text-xs text-slate-500 whitespace-nowrap">${status}</td>
+            </tr>
+          `;
+        });
+
+        tableBody.innerHTML = rows.join("");
+
+      } catch (err) {
+        console.error("โหลดตารางเวรของหมอไม่สำเร็จ:", err);
+        todayBox.innerHTML = `<p class="text-sm text-rose-500">โหลดข้อมูลไม่สำเร็จ</p>`;
+        nextShiftBox.innerHTML = `<p class="text-sm text-rose-500">โหลดข้อมูลไม่สำเร็จ</p>`;
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="6" class="px-3 py-4 text-center text-sm text-rose-500">
+              โหลดตารางเวรไม่สำเร็จ กรุณาลองใหม่อีกครั้ง
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    // ปุ่ม / event handler
+    if (btnLogout) {
+      btnLogout.addEventListener("click", async () => {
+        try {
+          await signOut(auth);
+          // ไปหน้า login (ของ doctor หรือใช้หน้าเดียวกับ user ก็ได้)
+          window.location.href = "login.html";
+        } catch (err) {
+          console.error(err);
+          alert("ออกจากระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+        }
+      });
+    }
+
+    if (btn7Days) {
+      btn7Days.addEventListener("click", () => {
+        rangeDays = 7;
+        const user = auth.currentUser;
+        if (user) loadMySchedules(user);
+      });
+    }
+
+    if (btn30Days) {
+      btn30Days.addEventListener("click", () => {
+        rangeDays = 30;
+        const user = auth.currentUser;
+        if (user) loadMySchedules(user);
+      });
+    }
+
+    // Auth + RBAC: ต้องเป็น doctor เท่านั้น
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "login.html?next=/doctor-my-schedule.html";
+        return;
+      }
+
+      const token = await user.getIdTokenResult(true);
+      const claims = token.claims;
+      console.log("claims (doctor schedule) =", claims);
+
+      const isDoctor = claims.role === "doctor" || claims.doctor === true;
+      if (!isDoctor) {
+        alert("หน้านี้สำหรับแพทย์เท่านั้น");
+        window.location.href = "index.html";
+        return;
+      }
+
+      doctorEmailEl.textContent = user.email || "-";
+      await loadMySchedules(user);
+    });
+  </script>
+</head>
+
+<body class="hero-bg">
+  <div class="min-h-screen">
+    <!-- Top bar (sticky + glass) -->
+    <header class="sticky top-0 z-50 bg-white/75 backdrop-blur border-b border-white/60">
+      <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="h-10 w-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-500 shadow-sm">
+            <span class="text-lg">🩺</span>
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs font-semibold text-sky-700">MedEase Doctor</p>
+            <h1 class="text-lg md:text-xl font-bold text-slate-900 truncate">ตารางงานของฉัน</h1>
+            <p class="text-[11px] text-slate-500">ดูเวรวันนี้ • เวรถัดไป • ตารางล่วงหน้า</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 md:gap-3 shrink-0">
+          <span
+            id="doctorEmail"
+            class="px-3 py-1.5 rounded-full bg-white/80 border border-slate-200 text-xs text-slate-700 shadow-sm"
+          >
+            ...
+          </span>
+
+          <button
+            id="btnLogout"
+            class="px-4 py-2 rounded-full bg-rose-500 text-xs font-semibold text-white hover:bg-rose-600 active:scale-[0.99] transition shadow-sm"
+          >
+            ออกจากระบบ
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main -->
+    <main class="max-w-5xl mx-auto px-4 py-6 space-y-6">
+      <!-- Overview -->
+      <section class="grid md:grid-cols-2 gap-4">
+        <div class="bg-white/90 backdrop-blur rounded-3xl border border-white/60 p-4 md:p-5 soft-shadow">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm font-semibold text-slate-800">ภาพรวมวันนี้</h2>
+            <span class="text-[11px] text-slate-500">Today</span>
+          </div>
+          <div id="todayBox" class="text-sm text-slate-600">
+            <!-- เวรวันนี้ -->
+          </div>
+        </div>
+
+        <div class="bg-white/90 backdrop-blur rounded-3xl border border-white/60 p-4 md:p-5 soft-shadow">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm font-semibold text-slate-800">เวรถัดไป</h2>
+            <span class="text-[11px] text-slate-500">Next</span>
+          </div>
+          <div id="nextShiftBox" class="text-sm text-slate-600">
+            <!-- เวรถัดไป -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ตารางเวร -->
+      <section class="bg-white/90 backdrop-blur rounded-3xl border border-white/60 p-4 md:p-5 soft-shadow">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+          <div>
+            <h2 class="text-sm font-semibold text-slate-800">ตารางเวรของฉัน</h2>
+            <p id="rangeLabel" class="text-xs text-slate-500">ช่วงวันนี้ – 7 วันถัดไป</p>
+          </div>
+
+          <div class="flex items-center gap-2 text-xs">
+            <span class="text-slate-500">ช่วงที่แสดง:</span>
+
+            <button
+              id="btn7Days"
+              class="px-3 py-1.5 rounded-full border border-sky-500 text-sky-600 bg-sky-50 hover:bg-sky-100 active:scale-[0.99] transition"
+            >
+              7 วัน
+            </button>
+
+            <button
+              id="btn30Days"
+              class="px-3 py-1.5 rounded-full border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 active:scale-[0.99] transition"
+            >
+              30 วัน
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="bg-slate-50 text-slate-600">
+                <th class="px-3 py-2 text-left whitespace-nowrap">วันที่</th>
+                <th class="px-3 py-2 text-left whitespace-nowrap">เวลา</th>
+                <th class="px-3 py-2 text-left whitespace-nowrap">ประเภทเวร</th>
+                <th class="px-3 py-2 text-left whitespace-nowrap">สถานที่</th>
+                <th class="px-3 py-2 text-left whitespace-nowrap">หมายเหตุ</th>
+                <th class="px-3 py-2 text-left whitespace-nowrap">สถานะ</th>
+              </tr>
+            </thead>
+            <tbody id="scheduleTableBody" class="divide-y divide-slate-100">
+              <tr>
+                <td colspan="6" class="px-3 py-4 text-center text-sm text-slate-500">
+                  กำลังโหลดตารางเวร...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="mt-3 text-[11px] text-slate-500">
+          * ตารางนี้แสดงเฉพาะเวรของบัญชีแพทย์ที่กำลังล็อกอินอยู่
+        </p>
+      </section>
+
+      <div class="pb-6 text-center text-[11px] text-slate-500">
+        MedEase • Doctor • My Schedule
+      </div>
+    </main>
+  </div>
+</body>
+</html>

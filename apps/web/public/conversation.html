@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>รายละเอียดบทสนทนา - MedEase</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    body {
+      font-family: "Sarabun", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    /* โทนพื้นหลังแบบหน้า index.html */
+    .hero-bg {
+      background:
+        radial-gradient(circle at 0% 0%, #ffe4f3 0, transparent 55%),
+        radial-gradient(circle at 100% 0%, #dbeafe 0, transparent 55%),
+        radial-gradient(circle at 50% 120%, #dcfce7 0, #f8fafc 60%);
+      min-height: 100vh;
+    }
+
+    /* เงานุ่ม */
+    .soft-shadow {
+      box-shadow: 0 10px 30px rgba(2, 132, 199, 0.08);
+    }
+  </style>
+</head>
+
+<body class="hero-bg text-slate-900" data-page="conversation">
+  <div class="min-h-screen">
+    <!-- Top bar (sticky + glass) -->
+    <header class="sticky top-0 z-50 border-b border-white/60 bg-white/75 backdrop-blur">
+      <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <a
+            href="/user-conversations.html"
+            class="inline-flex items-center rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-[0.99] transition"
+          >
+            ← กลับไปหน้าบทสนทนาทั้งหมด
+          </a>
+        </div>
+
+        <div class="text-right">
+          <p class="text-[11px] md:text-xs text-slate-500 leading-tight">
+            MedEase – แผงดูประวัติการสนทนา
+          </p>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-6 space-y-4">
+      <!-- หัวข้อ + toolbar -->
+      <section class="bg-white/90 backdrop-blur border border-white/60 rounded-3xl soft-shadow overflow-hidden">
+        <div class="px-5 md:px-6 py-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div class="min-w-0">
+            <h1 id="convTitle" class="text-base md:text-lg font-semibold text-slate-900">
+              รายละเอียดบทสนทนา
+            </h1>
+            <p id="convMeta" class="mt-1 text-[11px] md:text-xs text-slate-500">
+              -
+            </p>
+          </div>
+
+          <div class="flex flex-col items-end gap-2">
+            <span
+              id="convCountBadge"
+              class="inline-flex items-center rounded-full bg-sky-50 px-3 py-1 text-[11px] font-medium text-sky-700 border border-sky-100"
+            >
+              0 ข้อความ
+            </span>
+
+            <div class="flex flex-wrap items-center justify-end gap-2">
+              <!-- Filter -->
+              <div class="inline-flex rounded-full bg-slate-100 p-0.5 text-[11px]">
+                <button
+                  type="button"
+                  data-filter-btn
+                  data-filter="all"
+                  class="px-3 py-1 rounded-full font-medium text-slate-700 bg-white shadow-sm"
+                >
+                  ทั้งหมด
+                </button>
+                <button
+                  type="button"
+                  data-filter-btn
+                  data-filter="user"
+                  class="px-3 py-1 rounded-full text-slate-600 hover:text-slate-800"
+                >
+                  เฉพาะผู้ใช้
+                </button>
+                <button
+                  type="button"
+                  data-filter-btn
+                  data-filter="bot"
+                  class="px-3 py-1 rounded-full text-slate-600 hover:text-slate-800"
+                >
+                  เฉพาะ Arisa
+                </button>
+              </div>
+
+              <!-- Scroll bottom -->
+              <button
+                id="convScrollBottomBtn"
+                type="button"
+                class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 active:scale-[0.99] transition"
+              >
+                เลื่อนไปข้อความล่าสุด
+              </button>
+
+              <!-- Export -->
+              <div class="inline-flex rounded-full border border-slate-200 bg-white overflow-hidden text-[11px]">
+                <button
+                  id="convExportJsonBtn"
+                  type="button"
+                  class="px-3 py-1.5 border-r border-slate-200 hover:bg-slate-50 font-semibold text-slate-700"
+                >
+                  Export JSON
+                </button>
+                <button
+                  id="convExportCsvBtn"
+                  type="button"
+                  class="px-3 py-1.5 hover:bg-slate-50 font-semibold text-slate-700"
+                >
+                  Export CSV
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Loading / Empty / Messages -->
+        <div id="convLoading" class="px-5 md:px-6 py-8 text-sm text-slate-500">
+          กำลังโหลดบทสนทนา...
+        </div>
+
+        <div id="convEmpty" class="hidden px-5 md:px-6 py-10 text-center text-sm text-slate-400">
+          ยังไม่มีข้อความในบทสนทนานี้
+        </div>
+
+        <div
+          id="convMessagesScroll"
+          class="hidden max-h-[72vh] overflow-y-auto bg-slate-50/70 px-3 md:px-4 py-4"
+        >
+          <div id="convMessages" class="space-y-3"></div>
+        </div>
+      </section>
+
+      <div class="pb-6 text-center text-[11px] text-slate-500">
+        MedEase • Arisa • Conversation
+      </div>
+    </main>
+  </div>
+
+  <!-- JS (เดิม ห้ามแก้) -->
+  <script type="module" src="/js/messages.js"></script>
+</body>
+</html>

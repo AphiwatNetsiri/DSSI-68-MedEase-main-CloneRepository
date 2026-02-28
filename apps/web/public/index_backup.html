@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>MedEase – ระบบสุขภาพอัจฉริยะผ่าน LINE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Sarabun', system-ui, sans-serif; }
+    .hero-bg {
+      background: radial-gradient(circle at 0% 0%, #ffe4f3 0, transparent 55%),
+                  radial-gradient(circle at 100% 0%, #dbeafe 0, transparent 55%),
+                  radial-gradient(circle at 50% 120%, #dcfce7 0, #f9fafb 60%);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <!-- Navbar -->
+  <header class="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-slate-100">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      <a href="#hero" class="flex items-center gap-2">
+        <img src="Arisa.png" alt="MedEase Logo" class="w-8 h-8 rounded-full object-contain shadow-sm" />
+        <div class="leading-tight">
+          <p class="text-xs text-pink-400 font-semibold">MedEase</p>
+          <p class="text-sm font-semibold text-slate-800">ระบบสุขภาพอัจฉริยะผ่าน LINE</p>
+        </div>
+      </a>
+      <nav class="hidden md:flex items-center gap-6 text-sm text-slate-600">
+        <a href="#features" class="hover:text-pink-500">ฟีเจอร์หลัก</a>
+        <a href="#how-it-works" class="hover:text-pink-500">วิธีการทำงาน</a>
+        <a href="#for-hospitals" class="hover:text-pink-500">สำหรับโรงพยาบาล</a>
+        <a href="#project" class="hover:text-pink-500">ข้อมูลโครงงาน</a>
+      </nav>
+      <div class="flex items-center gap-2">
+        <!-- TODO: เปลี่ยนลิงก์ LINE Official Account ของจริงเองได้เลย -->
+        <a
+          href="#"
+          class="inline-flex items-center rounded-full bg-green-500 px-4 py-1.5 text-xs md:text-sm font-semibold text-white shadow hover:bg-green-600"
+        >
+          เปิดใช้ MedEase ผ่าน LINE
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section id="hero" class="hero-bg">
+      <div class="max-w-6xl mx-auto px-4 py-10 md:py-16 grid md:grid-cols-2 gap-10 items-center">
+        <div class="space-y-4">
+          <span class="inline-flex items-center gap-2 rounded-full border border-pink-200 bg-white/80 px-3 py-1 text-xs font-semibold text-pink-500 shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+            พร้อมใช้งานบน LINE แล้ว
+          </span>
+          <h1 class="text-3xl md:text-4xl font-extrabold leading-snug text-slate-900">
+            เชื่อมต่อสุขภาพของคุณ<br class="hidden md:block" />
+            <span class="text-pink-500">ง่าย ๆ ผ่าน MedEase</span>
+          </h1>
+          <p class="text-sm md:text-base text-slate-600 max-w-xl">
+            MedEase คือระบบสุขภาพอัจฉริยะผ่าน LINE ที่ช่วยให้ผู้ใช้
+            <span class="font-semibold">นัดหมายแพทย์ ขอใบรับรอง ติดตามประวัติสุขภาพ และอ่านข่าวสุขภาพที่น่าเชื่อถือ</span>
+            ได้ในที่เดียว ผ่านแชทบอทผู้ช่วย <span class="font-semibold text-pink-500">“อาริศา”</span> ตลอด 24 ชั่วโมง
+          </p>
+
+          <div class="flex flex-wrap gap-3">
+            <a
+              href="#features"
+              class="inline-flex items-center justify-center rounded-full bg-pink-500 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-pink-600"
+            >
+              ดูฟีเจอร์ของ MedEase
+            </a>
+            <a
+              href="#how-it-works"
+              class="inline-flex items-center justify-center rounded-full border border-sky-200 bg-white/80 px-5 py-2 text-sm font-semibold text-sky-600 hover:bg-sky-50"
+            >
+              MedEase ทำงานอย่างไร?
+            </a>
+          </div>
+
+          <div class="flex flex-wrap gap-4 text-xs text-slate-500 pt-2">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span> ใช้งานได้ทั้งมือถือและคอมพิวเตอร์
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-sky-400"></span> รองรับ LINE Official Account
+            </div>
+          </div>
+        </div>
+
+        <!-- ภาพฝั่งขวา -->
+        <div class="relative">
+          <div class="rounded-3xl bg-white/80 shadow-xl border border-slate-100 p-5 md:p-6 flex flex-col gap-4">
+            <div class="flex items-center gap-3">
+              <img src="Arisa.png" alt="Arisa Bot" class="w-10 h-10 rounded-full object-contain shadow" />
+              <div class="leading-tight">
+                <p class="text-xs text-slate-500">Arisa • Health Assistant</p>
+                <p class="text-sm font-semibold">สวัสดีค่ะ อาริศาช่วยดูแลสุขภาพให้นะคะ 💚</p>
+              </div>
+            </div>
+            <div class="rounded-2xl border border-pink-100 bg-pink-50/70 px-4 py-3 text-xs text-slate-700">
+              <p class="font-semibold mb-1 text-pink-500">สิ่งที่คุณทำได้บน MedEase</p>
+              <ul class="space-y-1 list-disc list-inside">
+                <li>จองคิวนัดหมายแพทย์ เลือกแผนก วันที่ และช่วงเวลา</li>
+                <li>ส่งคำขอใบรับรองแพทย์ และรับไฟล์ PDF ผ่านลิงก์</li>
+                <li>บันทึกและติดตามประวัติสุขภาพส่วนตัวแบบดิจิทัล</li>
+                <li>อ่านข่าวสุขภาพที่ถูกต้อง ใช้ภาษาที่เข้าใจง่าย</li>
+              </ul>
+            </div>
+            <div class="text-[11px] text-slate-400">
+              ข้อมูลทั้งหมดถูกจัดเก็บบน Firebase และเชื่อมต่อผ่าน LINE Messaging API เพื่อความปลอดภัยและใช้งานได้จริงในชีวิตประจำวัน
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="bg-white">
+      <div class="max-w-6xl mx-auto px-4 py-12 md:py-16">
+        <div class="flex items-baseline justify-between gap-4 mb-8">
+          <div>
+            <h2 class="text-xl md:text-2xl font-bold text-slate-900 mb-1">ฟีเจอร์หลักของ MedEase</h2>
+            <p class="text-sm text-slate-500">
+              ครอบคลุมตั้งแต่การนัดหมาย การขอใบรับรอง การติดตามสุขภาพ ไปจนถึงข่าวสารสุขภาพในที่เดียว
+            </p>
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6">
+          <!-- นัดหมายแพทย์ -->
+          <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 shadow-sm">
+            <h3 class="font-semibold mb-2 text-slate-900">จองนัดหมายแพทย์</h3>
+            <p class="text-sm text-slate-600 mb-2">
+              เลือกแผนก วัน และช่วงเวลาได้เองผ่าน LINE ไม่ต้องโทรไปโรงพยาบาลและรอคิวนาน
+            </p>
+            <ul class="text-xs text-slate-500 space-y-1 list-disc list-inside">
+              <li>แสดงสถานะนัดหมาย (pending / confirmed / cancelled)</li>
+              <li>แพทย์หรือแอดมินจัดการคิวผ่านหน้าเว็บแอดมิน</li>
+            </ul>
+          </div>
+
+          <!-- ใบรับรองแพทย์ -->
+          <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 shadow-sm">
+            <h3 class="font-semibold mb-2 text-slate-900">ขอใบรับรองแพทย์ออนไลน์</h3>
+            <p class="text-sm text-slate-600 mb-2">
+              ส่งคำขอใบรับรองผ่านแชท จากนั้นแพทย์ตรวจสอบและอัปโหลดไฟล์ PDF ให้ดาวน์โหลดได้
+            </p>
+            <ul class="text-xs text-slate-500 space-y-1 list-disc list-inside">
+              <li>จัดเก็บคำขอใน Firestore</li>
+              <li>รองรับการส่งลิงก์ดาวน์โหลดผ่าน LINE หรืออีเมล</li>
+            </ul>
+          </div>
+
+          <!-- บันทึกสุขภาพ -->
+          <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 shadow-sm">
+            <h3 class="font-semibold mb-2 text-slate-900">บันทึกและติดตามสุขภาพ</h3>
+            <p class="text-sm text-slate-600 mb-2">
+              เก็บประวัติสุขภาพและการนัดหมายในรูปแบบดิจิทัล ช่วยให้ผู้ใช้และแพทย์ดูข้อมูลย้อนหลังได้สะดวก
+            </p>
+            <ul class="text-xs text-slate-500 space-y-1 list-disc list-inside">
+              <li>เชื่อมต่อกับบัญชีผู้ใช้ผ่าน Firebase Authentication</li>
+              <li>มีโครงสร้างข้อมูลรองรับการต่อยอดด้าน Data / AI</li>
+            </ul>
+          </div>
+
+          <!-- ข่าวสุขภาพ -->
+          <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 shadow-sm">
+            <h3 class="font-semibold mb-2 text-slate-900">ข่าวสุขภาพจากแหล่งที่เชื่อถือได้</h3>
+            <p class="text-sm text-slate-600 mb-2">
+              หน้า MedEase Health News แสดงข่าวจากฐานข้อมูล Firestore พร้อมระบบจัดการข่าวสำหรับแอดมิน
+            </p>
+            <ul class="text-xs text-slate-500 space-y-1 list-disc list-inside">
+              <li>ข่าวแยกเป็นหัวข้อและหมวดหมู่</li>
+              <li>หน้าอ่านข่าวเต็มรองรับภาพ วิดีโอ และไฟล์เอกสาร</li>
+            </ul>
+          </div>
+
+          <!-- แชทบอท Arisa -->
+          <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 shadow-sm">
+            <h3 class="font-semibold mb-2 text-slate-900">แชทบอท “อาริศา”</h3>
+            <p class="text-sm text-slate-600 mb-2">
+              ผู้ช่วยอัจฉริยะที่คอยตอบคำถาม นำทางผู้ใช้ไปยังเมนูต่าง ๆ และเชื่อมต่อกับระบบนัดหมาย / ใบรับรอง / ข่าวสุขภาพ
+            </p>
+            <ul class="text-xs text-slate-500 space-y-1 list-disc list-inside">
+              <li>ใช้ LINE Messaging API + Node.js / Express</li>
+              <li>รองรับการพัฒนาเพิ่มเติมด้วย AI / Infermedica</li>
+            </ul>
+          </div>
+
+          <!-- Cloud & Security -->
+          <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 shadow-sm">
+            <h3 class="font-semibold mb-2 text-slate-900">Cloud &amp; Security</h3>
+            <p class="text-sm text-slate-600 mb-2">
+              ออกแบบบน Firebase และ Cloud ทำให้รองรับการขยายตัว ปลอดภัย และดูแลง่ายสำหรับทีมพัฒนา
+            </p>
+            <ul class="text-xs text-slate-500 space-y-1 list-disc list-inside">
+              <li>ใช้ Firestore / Auth / Hosting ของ Firebase</li>
+              <li>รองรับการยืนยันตัวตนและการแบ่งสิทธิ์แอดมิน</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section id="how-it-works" class="bg-slate-50">
+      <div class="max-w-6xl mx-auto px-4 py-12 md:py-16">
+        <h2 class="text-xl md:text-2xl font-bold text-slate-900 mb-6">MedEase ทำงานอย่างไร?</h2>
+        <div class="grid md:grid-cols-3 gap-6 text-sm">
+          <div class="rounded-2xl bg-white border border-slate-100 p-5 shadow-sm">
+            <div class="text-xs font-semibold text-slate-500 mb-1">ขั้นตอนที่ 1</div>
+            <h3 class="font-semibold mb-2">เพิ่มเพื่อน & เริ่มแชท</h3>
+            <p class="text-slate-600">
+              ผู้ใช้เพิ่ม MedEase เป็นเพื่อนใน LINE จากนั้นพิมพ์ทัก “สวัสดี” หรือเลือกเมนูจากริชเมนูเพื่อเริ่มใช้งาน
+            </p>
+          </div>
+          <div class="rounded-2xl bg-white border border-slate-100 p-5 shadow-sm">
+            <div class="text-xs font-semibold text-slate-500 mb-1">ขั้นตอนที่ 2</div>
+            <h3 class="font-semibold mb-2">แชทกับอาริศา เลือกบริการที่ต้องการ</h3>
+            <p class="text-slate-600">
+              แชทบอทอาริศานำทางไปยังฟังก์ชัน เช่น นัดหมายแพทย์ ขอใบรับรอง ดูข่าวสุขภาพ หรือเปิดหน้าเว็บ LIFF ให้กรอกข้อมูล
+            </p>
+          </div>
+          <div class="rounded-2xl bg-white border border-slate-100 p-5 shadow-sm">
+            <div class="text-xs font-semibold text-slate-500 mb-1">ขั้นตอนที่ 3</div>
+            <h3 class="font-semibold mb-2">เบื้องหลังด้วย Cloud & Dashboard แอดมิน</h3>
+            <p class="text-slate-600">
+              ข้อมูลทั้งหมดถูกเก็บใน Firestore แอดมินจัดการคิว ใบรับรอง และข่าวผ่านหน้าเว็บ MedEase Admin ได้อย่างเป็นระบบ
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- For hospitals -->
+    <section id="for-hospitals" class="bg-white">
+      <div class="max-w-6xl mx-auto px-4 py-12 md:py-16 grid md:grid-cols-2 gap-8 items-start">
+        <div>
+          <h2 class="text-xl md:text-2xl font-bold text-slate-900 mb-3">ประโยชน์สำหรับโรงพยาบาล / คลินิก</h2>
+          <p class="text-sm text-slate-600 mb-4">
+            MedEase ถูกออกแบบให้เป็น “ต้นแบบระบบสุขภาพบน LINE” ที่สามารถนำไปต่อยอดใช้จริงในองค์กรด้านสาธารณสุขได้
+          </p>
+          <ul class="text-sm text-slate-600 space-y-2 list-disc list-inside">
+            <li>ลดภาระเจ้าหน้าที่ในการรับสายและจองคิวนัดหมาย</li>
+            <li>จัดการคิวผู้ป่วยและคำขอใบรับรองได้จากหน้าเว็บแอดมินเดียว</li>
+            <li>เก็บข้อมูลผู้ป่วยและประวัติสุขภาพอย่างเป็นระบบ นำไปใช้วิเคราะห์ต่อได้</li>
+            <li>เพิ่มช่องทางสื่อสารข่าวสารสุขภาพให้ประชาชนเข้าถึงง่ายผ่าน LINE</li>
+          </ul>
+        </div>
+        <div class="rounded-3xl border border-slate-100 bg-slate-50/70 p-5 shadow-sm text-sm text-slate-600">
+          <h3 class="font-semibold mb-2 text-slate-900">เทคโนโลยีที่ใช้พัฒนา</h3>
+          <ul class="space-y-1 list-disc list-inside">
+            <li>LINE Messaging API / LINE LIFF</li>
+            <li>Node.js + Express สำหรับ Webhook และ Backend</li>
+            <li>Firebase Authentication, Firestore, Hosting</li>
+            <li>HTML, CSS, TailwindCSS สำหรับส่วน UI</li>
+            <li>GitHub + VS Code สำหรับจัดการซอร์สโค้ด</li>
+          </ul>
+          <p class="mt-4 text-xs text-slate-500">
+            โครงสร้างระบบวางบน Cloud ทำให้รองรับการขยายจำนวนผู้ใช้ในอนาคตได้ดี และสะดวกต่อการดูแลรักษา
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Project info -->
+    <section id="project" class="bg-slate-50">
+      <div class="max-w-6xl mx-auto px-4 py-12 md:py-16">
+        <h2 class="text-xl md:text-2xl font-bold text-slate-900 mb-4">MedEase ในมุมมองโครงงานวิชาการ</h2>
+        <div class="grid md:grid-cols-2 gap-6 text-sm">
+          <div class="rounded-2xl bg-white border border-slate-100 p-5 shadow-sm">
+            <h3 class="font-semibold mb-2">ที่มาและวัตถุประสงค์</h3>
+            <p class="text-slate-600 mb-2">
+              พัฒนาขึ้นเพื่อลดปัญหาการติดต่อโรงพยาบาลล่าช้า การจองคิวที่ยุ่งยาก
+              และการขาดระบบติดตามประวัติสุขภาพของผู้ใช้ในปัจจุบัน
+            </p>
+            <ul class="space-y-1 list-disc list-inside text-slate-600">
+              <li>ให้ผู้ใช้จองนัดหมายแพทย์ได้ด้วยตนเองผ่าน LINE</li>
+              <li>ขอใบรับรองแพทย์แบบออนไลน์</li>
+              <li>มีระบบจัดเก็บประวัติสุขภาพส่วนบุคคลแบบดิจิทัล</li>
+              <li>เผยแพร่ข่าวสารและความรู้ด้านสุขภาพที่ถูกต้อง</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl bg-white border border-slate-100 p-5 shadow-sm">
+            <h3 class="font-semibold mb-2">คุณค่าที่คาดว่าจะได้รับ</h3>
+            <ul class="space-y-1 list-disc list-inside text-slate-600">
+              <li>ผู้ใช้ลดเวลาเดินทางและรอคิว สามารถจัดการสุขภาพของตนเองได้ดีขึ้น</li>
+              <li>โรงพยาบาลบริหารจัดการคิวนัดหมายได้อย่างมีประสิทธิภาพ</li>
+              <li>เป็นตัวอย่างการประยุกต์ใช้ Chatbot และ Cloud ในงานสาธารณสุข</li>
+              <li>ผู้พัฒนามีทักษะการสร้าง Web Application และระบบบน Cloud ที่ต่อยอดได้จริง</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-t-[#eaf5f8]">
+    <div class="max-w-6xl mx-auto px-4 py-5 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-500">
+      <span class="flex items-center gap-2">
+        <img src="Arisa.png" alt="logo small" class="w-7 h-7 rounded-full object-contain" />
+        <span>MedEase © 2025</span>
+      </span>
+      <span>
+        พัฒนาเพื่อการเรียนรู้โดย DSSI •
+        <a href="https://www.ubu.ac.th/" class="underline hover:text-pink-400" target="_blank" rel="noreferrer">UBU</a>
+      </span>
+    </div>
+  </footer>
+</body>
+</html>

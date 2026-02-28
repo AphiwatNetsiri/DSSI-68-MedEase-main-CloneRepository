@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>นัดหมายแพทย์ - MedEase</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Sarabun', system-ui, sans-serif; }
+    .hero-bg {
+      background: radial-gradient(circle at 0% 0%, #ffe4f3 0, transparent 55%),
+                  radial-gradient(circle at 100% 0%, #dbeafe 0, transparent 55%),
+                  radial-gradient(circle at 50% 120%, #dcfce7 0, #f9fafb 60%);
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800">
+  <header class="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-slate-100">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <a href="index.html" class="flex items-center gap-2">
+        <img src="Arisa.png" alt="MedEase" class="w-8 h-8 rounded-full object-contain shadow-sm" />
+        <div class="leading-tight">
+          <p class="text-xs text-pink-400 font-semibold">MedEase</p>
+          <p class="text-sm font-semibold text-slate-800">นัดหมายแพทย์</p>
+        </div>
+      </a>
+      <a href="qr-line.html" class="text-xs font-semibold rounded-full border border-slate-200 bg-white px-3 py-1.5 hover:bg-slate-50">
+        เพิ่มเพื่อน Arisa
+      </a>
+    </div>
+  </header>
+
+  <main class="hero-bg">
+    <div class="max-w-3xl mx-auto px-4 py-8">
+      <div class="rounded-3xl bg-white/85 border border-slate-100 shadow-xl p-5 md:p-6">
+        <h1 class="text-xl md:text-2xl font-extrabold text-slate-900">จองนัดหมายแพทย์</h1>
+        <p class="mt-1 text-sm text-slate-600">
+          กรอกข้อมูลเพื่อส่งคำขอนัดหมาย (ระบบจะบันทึกลงฐานข้อมูล และเจ้าหน้าที่/แอดมินสามารถยืนยันในหน้า Admin ได้)
+        </p>
+
+        <div class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800 leading-relaxed">
+          ⚠️ หมายเหตุ: นี่เป็นการ “ขอนัดหมาย” ไม่ใช่การวินิจฉัยโรค หากมีอาการรุนแรง/ฉุกเฉิน ควรไปโรงพยาบาลทันที
+        </div>
+
+        <form id="bookingForm" class="mt-5 grid grid-cols-1 md:grid-cols-12 gap-3">
+          <div class="md:col-span-6">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">แผนก</label>
+            <select id="departmentSelect" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" required>
+              <option value="แผนกตรวจโรคทั่วไป (OPD)">ตรวจโรคทั่วไป (OPD)</option>
+              <option value="กุมารเวชกรรม (Pediatrics)">กุมารเวชกรรม (Pediatrics)</option>
+              <option value="สูตินรีเวชกรรม (Obstetrics & Gynecology)">สูตินรีเวชกรรม (สูติฯ)</option>
+              <option value="ผิวหนัง (Dermatology)">ผิวหนัง (Dermatology)</option>
+              <option value="กระดูกและข้อ (Orthopedics)">กระดูกและข้อ (Ortho)</option>
+              <option value="หู คอ จมูก (Otolaryngology)">หู คอ จมูก (ENT)</option>
+              <option value="ทันตกรรม (Dentistry)">ทันตกรรม (Dentistry)</option>
+              <option value="จิตเวชศาสตร์ (Psychiatry)">จิตเวชศาสตร์ (Psychiatry)</option>
+              <option value="ห้องยา/แผนกจ่ายยา">ห้องยา/แผนกจ่ายยา</option>
+              <option value="แผนกเวชทะเบียน">แผนกเวชทะเบียน</option>
+              <option value="กายภาพบำบัด">กายภาพบำบัด</option>
+              <option value="__other__">อื่น ๆ (พิมพ์เอง)</option>
+            </select>
+            <div id="departmentOtherWrap" class="hidden mt-2">
+              <input id="departmentOther" type="text" placeholder="พิมพ์ชื่อแผนก/คลินิก..." class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" />
+            </div>
+          </div>
+
+          <div class="md:col-span-3">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">วันที่</label>
+            <input id="dateInput" type="date" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" required />
+          </div>
+
+          <div class="md:col-span-3">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ช่วงเวลา</label>
+            <select id="sessionSelect" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200">
+              <option value="morning">เช้า</option>
+              <option value="afternoon">บ่าย</option>
+            </select>
+          </div>
+
+          <div class="md:col-span-6">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อผู้รับบริการ</label>
+            <input id="nameInput" type="text" placeholder="เช่น คุณเอ" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" required />
+          </div>
+
+          <div class="md:col-span-6">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">เบอร์ติดต่อ</label>
+            <input id="contactInput" type="text" placeholder="08x-xxx-xxxx" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" required />
+          </div>
+
+          <div class="md:col-span-12">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">อาการ/หมายเหตุ (ไม่บังคับ)</label>
+            <textarea id="noteInput" rows="3" placeholder="เล่าอาการสั้น ๆ เพื่อให้เจ้าหน้าที่จัดคิวได้เหมาะสม" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200"></textarea>
+          </div>
+
+          <div class="md:col-span-12 flex flex-col sm:flex-row gap-3">
+            <button id="submitBtn" type="submit" class="flex-1 inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-extrabold text-white shadow hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-200">
+              ส่งคำขอนัดหมาย
+            </button>
+            <a href="qr-line.html" class="flex-1 inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white/80 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-white">
+              เพิ่มเพื่อน Arisa ใน LINE
+            </a>
+          </div>
+        </form>
+
+        <div id="resultBox" class="hidden mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 whitespace-pre-line"></div>
+        <div id="errorBox" class="hidden mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"></div>
+
+        <p class="mt-5 text-xs text-slate-500">
+          หมายเหตุด้านเทคนิค: หน้านี้จะบันทึกลง Firestore collection <code class="px-1 py-0.5 rounded bg-slate-100">appointments</code>
+          ถ้า Rules ยังไม่อนุญาตให้ผู้ใช้ทั่วไปเขียนข้อมูล จะขึ้นแจ้งเตือน “permission-denied”
+        </p>
+      </div>
+
+      <footer class="text-center text-xs text-slate-500 py-6">MedEase © 2025</footer>
+    </div>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzRiHElsEa_PFOf90mJXzVELsuHwG5_fM",
+      authDomain: "medeasehosting.firebaseapp.com",
+      projectId: "medeasehosting",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const deptSel = document.getElementById("departmentSelect");
+    const otherWrap = document.getElementById("departmentOtherWrap");
+    deptSel.addEventListener("change", () => {
+      otherWrap.classList.toggle("hidden", deptSel.value !== "__other__");
+      if (deptSel.value !== "__other__") document.getElementById("departmentOther").value = "";
+    });
+
+    const form = document.getElementById("bookingForm");
+    const submitBtn = document.getElementById("submitBtn");
+    const resultBox = document.getElementById("resultBox");
+    const errorBox  = document.getElementById("errorBox");
+
+    function showResult(msg) {
+      errorBox.classList.add("hidden");
+      resultBox.textContent = msg;
+      resultBox.classList.remove("hidden");
+    }
+    function showError(msg) {
+      resultBox.classList.add("hidden");
+      errorBox.textContent = msg;
+      errorBox.classList.remove("hidden");
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "กำลังส่ง...";
+
+      try {
+        const department = (deptSel.value === "__other__")
+          ? (document.getElementById("departmentOther").value.trim())
+          : deptSel.value;
+
+        const dateKey = document.getElementById("dateInput").value;
+        const session = document.getElementById("sessionSelect").value;
+        const name = document.getElementById("nameInput").value.trim();
+        const contact = document.getElementById("contactInput").value.trim();
+        const note = document.getElementById("noteInput").value.trim();
+
+        if (!department) throw new Error("กรุณาเลือก/กรอกแผนก");
+        if (!dateKey) throw new Error("กรุณาเลือกวันที่");
+        if (!name) throw new Error("กรุณากรอกชื่อ");
+        if (!contact) throw new Error("กรุณากรอกเบอร์ติดต่อ");
+
+        const dateAt = Timestamp.fromDate(new Date(`${dateKey}T00:00:00`));
+
+        const ref = await addDoc(collection(db, "appointments"), {
+          department,
+          dateKey,
+          dateAt,
+          session,
+          name,
+          contact,
+          note,
+          status: "pending",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          source: "public-web",
+        });
+
+        showResult(
+          `ส่งคำขอนัดหมายสำเร็จ ✅ (รหัส: ${ref.id})\n` +
+          `โปรดรอเจ้าหน้าที่ยืนยัน และหากต้องการรับแจ้งเตือนผ่าน LINE ให้เพิ่มเพื่อน Arisa ด้วยค่ะ`
+        );
+
+        form.reset();
+        otherWrap.classList.add("hidden");
+      } catch (err) {
+        console.error(err);
+        showError(err?.message || "ส่งคำขอไม่สำเร็จ");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "ส่งคำขอนัดหมาย";
+      }
+    });
+  </script>
+</body>
+</html>

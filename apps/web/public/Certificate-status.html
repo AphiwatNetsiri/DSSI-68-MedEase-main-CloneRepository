@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>สถานะใบรับรองแพทย์</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzRiHElsEa_PFOf90mJXzVELsuHwG5_fM",
+      authDomain: "medeasehosting.firebaseapp.com",
+      projectId: "medeasehosting",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const list = document.getElementById("request-list");
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return window.location.href = "users-login.html";
+
+      const q = query(
+        collection(db, "certificates_requests"),
+        where("byUser", "==", user.uid),
+        orderBy("createdAt", "desc")
+      );
+
+      const snap = await getDocs(q);
+      list.innerHTML = "";
+
+      if (snap.empty) {
+        list.innerHTML = `<p class='text-gray-500 text-center'>ยังไม่มีคำร้อง</p>`;
+        return;
+      }
+
+      snap.forEach(doc => {
+        const data = doc.data();
+        const el = document.createElement("div");
+        el.className = "bg-white rounded-xl p-4 shadow border border-green-100 mb-4";
+
+        el.innerHTML = `
+          <h2 class="text-lg font-semibold text-green-700">📌 ${data.fullname}</h2>
+          <p class="text-sm text-gray-600">อาการ: ${data.symptoms}</p>
+          <p class="text-sm">สถานะ: <span class="font-medium ${data.status === 'approved' ? 'text-green-600' : 'text-yellow-600'}">${data.status}</span></p>
+          ${data.resultUrl ? `<a href="${data.resultUrl}" target="_blank" class="inline-block mt-2 text-blue-600 underline">🔗 ดาวน์โหลดใบรับรอง</a>` : ""}
+        `;
+        list.appendChild(el);
+      });
+    });
+  </script>
+</head>
+<body class="bg-green-50 min-h-screen py-10 px-4">
+  <div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold text-center text-green-700 mb-6">📋 สถานะคำร้องใบรับรองแพทย์</h1>
+    <div id="request-list" class="space-y-4"></div>
+  </div>
+</body>
+</html>

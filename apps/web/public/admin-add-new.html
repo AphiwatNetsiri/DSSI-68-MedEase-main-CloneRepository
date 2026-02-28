@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin จัดการข่าวสุขภาพ - MedEase</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background-color: #f9fafb; /* เทาอ่อน เรียบ ๆ */
+    }
+    .admin-card {
+      border-radius: 0.75rem;
+      border: 1px solid #e5e7eb;      /* เทาอ่อน */
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05); /* เงาบาง ๆ */
+    }
+    .btn-delete {
+      background-color: #fee2e2;      /* แดงอ่อน */
+      color: #b91c1c;
+    }
+    .btn-delete:hover,
+    .btn-delete:focus {
+      background-color: #fecaca;
+    }
+  </style>
+</head>
+
+<body class="text-gray-700 min-h-screen">
+  <!-- Header -->
+  <header class="border-b bg-white">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex items-center gap-3">
+        <img
+          src="image/Arisa.png"
+          alt="MedEase Logo"
+          class="w-9 h-9 rounded-full object-cover border border-gray-200"
+        />
+        <div>
+          <p class="text-xs font-semibold text-sky-700">MedEase Admin</p>
+          <h1 class="text-lg sm:text-xl font-bold">จัดการข่าวสุขภาพ</h1>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap justify-between sm:justify-end">
+        <a
+          href="admin.html"
+          class="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-md text-xs sm:text-sm hover:bg-gray-50"
+        >
+          แดชบอร์ด
+        </a>
+        <span
+          id="admin-email"
+          class="text-xs sm:text-sm bg-gray-100 px-3 py-1 rounded-full text-gray-700 border border-gray-200"
+        ></span>
+        <button
+          id="logoutBtn"
+          class="bg-red-500 text-white px-3 py-1.5 rounded-md text-xs sm:text-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300"
+        >
+          Logout
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="max-w-6xl mx-auto py-8 px-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+      <h2 class="text-lg font-semibold text-slate-800">ข่าวสุขภาพทั้งหมด</h2>
+
+      <!-- ไปหน้าเพิ่ม/แก้ข่าว -->
+      <a
+        href="admin-form-news.html"
+        class="inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-xs sm:text-sm font-medium text-white hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-300"
+      >
+        ➕ เพิ่มข่าวใหม่
+      </a>
+    </div>
+
+    <div id="news-list" class="space-y-4 text-center text-gray-400 italic">
+      กำลังโหลดข่าว...
+    </div>
+  </main>
+
+  <footer class="mt-8 border-t bg-white">
+    <div class="max-w-6xl mx-auto px-4 py-4 text-center text-xs text-gray-400">
+      © 2025 MedEase Health News
+    </div>
+  </footer>
+
+  <!-- Firebase App -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
+    import {
+      getFirestore, collection, getDocs, deleteDoc, doc, query, orderBy
+    } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+    import {
+      getAuth, onIdTokenChanged, signOut
+    } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
+
+    // --- Firebase config ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzRiHElsEa_PFOf90mJXzVELsuHwG5_fM",
+      authDomain: "medeasehosting.firebaseapp.com",
+      projectId: "medeasehosting"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const db   = getFirestore(app);
+    const auth = getAuth(app);
+
+    const newsList   = document.getElementById("news-list");
+    const adminEmail = document.getElementById("admin-email");
+    const logoutBtn  = document.getElementById("logoutBtn");
+
+    // ===== Guard แอดมิน (รีเฟรชเคลมเสมอ) =====
+    onIdTokenChanged(auth, async (user) => {
+      if (!user) {
+        const next = encodeURIComponent(location.pathname + location.search);
+        location.href = `login.html?next=${next}`;
+        return;
+      }
+      const token = await user.getIdTokenResult(true); // force refresh claims
+      if (token.claims?.admin !== true) {
+        alert("คุณไม่มีสิทธิ์เข้าถึงหน้านี้");
+        await signOut(auth);
+        location.href = "login.html";
+        return;
+      }
+      adminEmail.textContent = user.email || "admin";
+      loadNews();
+    });
+
+    // ===== ออกจากระบบ =====
+    logoutBtn.addEventListener("click", async () => {
+      await signOut(auth);
+      location.href = "login.html";
+    });
+
+    // ===== โหลดรายการข่าว =====
+    async function loadNews() {
+      try {
+        const q = query(collection(db, "news"), orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+          newsList.innerHTML = `<p class="text-gray-500">ไม่มีข่าวในระบบ</p>`;
+          return;
+        }
+
+        newsList.innerHTML = "";
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data() || {};
+          const id   = docSnap.id;
+
+          const mediaInfo = data.mediaType === "youtube" ? "🎥 วิดีโอ" : "🖼️ รูปภาพ";
+          const dateObj   = data.createdAt?.toDate?.() || new Date();
+          const formatted = dateObj.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
+
+          const el = document.createElement("div");
+          el.className = "admin-card bg-white p-4 sm:p-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between";
+
+          el.innerHTML = `
+            <div class="text-left flex-1">
+              <h3 class="text-base sm:text-lg font-semibold text-slate-800 mb-1">
+                ${escapeHtml(data.topic || "(ไม่มีชื่อเรื่อง)")}
+              </h3>
+              <p class="text-xs text-gray-500 mb-1">${mediaInfo}</p>
+              <p class="text-xs text-gray-500">${formatted}</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 justify-start sm:justify-end">
+              <a
+                href="news-detail.html?id=${encodeURIComponent(id)}"
+                target="_blank"
+                class="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs sm:text-sm text-gray-700 hover:bg-gray-50"
+              >
+                🔍 ดูข่าว
+              </a>
+
+              <a
+                href="admin-form-news.html?id=${encodeURIComponent(id)}"
+                class="inline-flex items-center justify-center rounded-md bg-sky-600 px-3 py-1.5 text-xs sm:text-sm font-medium text-white hover:bg-sky-700"
+              >
+                ✏️ แก้ไข
+              </a>
+
+              <button
+                data-id="${id}"
+                class="delete-btn inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs sm:text-sm font-medium border border-red-300"
+              >
+                🗑️ ลบข่าว
+              </button>
+            </div>
+          `;
+
+          newsList.appendChild(el);
+        });
+
+        // bind ลบข่าว
+        document.querySelectorAll(".delete-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const id = btn.dataset.id;
+            if (!confirm("คุณแน่ใจว่าต้องการลบข่าวนี้หรือไม่?")) return;
+
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = "⏳ กำลังลบ...";
+            try {
+              await deleteDoc(doc(db, "news", id));
+              btn.closest(".admin-card")?.remove();
+            } catch (error) {
+              alert("ไม่สามารถลบข่าวได้: " + (error?.message || "unknown"));
+              btn.disabled = false;
+              btn.textContent = originalText;
+            }
+          });
+        });
+
+      } catch (e) {
+        newsList.innerHTML = `<p class="text-red-600">ไม่สามารถโหลดข่าวได้ในขณะนี้</p>`;
+        console.error(e);
+      }
+    }
+
+    // ===== helper ปลอดภัยกับข้อความ =====
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+  </script>
+
+  <!-- icons -->
+  <script src="https://kit.fontawesome.com/1a3ec3aa3c.js" crossorigin="anonymous"></script>
+</body>
+</html>

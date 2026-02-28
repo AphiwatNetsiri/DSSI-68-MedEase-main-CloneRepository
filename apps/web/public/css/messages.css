@@ -1,0 +1,69 @@
+/* messages.css – สไตล์เล็กน้อยสำหรับ bubble แชท */
+
+.chat-row {
+  display: flex;
+  width: 100%;
+}
+
+.chat-row.align-right {
+  justify-content: flex-end;
+}
+
+.chat-bubble {
+  max-width: 80%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+.chat-bubble-user {
+  background: #e5f0ff;
+  border-bottom-left-radius: 0.25rem;
+}
+
+.chat-bubble-arisa {
+  background: #fef3ff;
+  border-bottom-right-radius: 0.25rem;
+}
+
+.chat-bubble-dog {
+  background: #fef9c3;
+  border-bottom-right-radius: 0.25rem;
+}
+
+.chat-meta {
+  margin-top: 0.125rem;
+  font-size: 0.7rem;
+  color: #6b7280;
+}
+
+.badge-user,
+.badge-arisa,
+.badge-dog {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.badge-user {
+  background: #e0edff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.badge-arisa {
+  background: #fbe7ff;
+  border-color: #f5d0fe;
+  color: #c026d3;
+}
+
+.badge-dog {
+  background: #fef9c3;
+  border-color: #fef08a;
+  color: #92400e;
+}

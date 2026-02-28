@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>เพิ่มเพื่อน Arisa บน LINE – MedEase</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Sarabun', system-ui, sans-serif; }
+    .hero-bg {
+      background: radial-gradient(circle at 0% 0%, #ffe4f3 0, transparent 55%),
+                  radial-gradient(circle at 100% 0%, #dbeafe 0, transparent 55%),
+                  radial-gradient(circle at 50% 120%, #dcfce7 0, #f9fafb 60%);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen hero-bg text-slate-800">
+  <header class="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-slate-100">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      <a href="/index.html#hero" class="flex items-center gap-2">
+        <img src="Arisa.png" alt="MedEase Logo" class="w-8 h-8 rounded-full object-contain shadow-sm" />
+        <div class="leading-tight">
+          <p class="text-xs text-pink-400 font-semibold">MedEase</p>
+          <p class="text-sm font-semibold text-slate-800">เพิ่มเพื่อน Arisa</p>
+        </div>
+      </a>
+      <a href="/index.html"
+         class="inline-flex items-center rounded-full border border-slate-200 bg-white/70 px-4 py-1.5 text-xs md:text-sm font-semibold text-slate-700 hover:bg-white">
+        กลับหน้าแรก
+      </a>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+    <section class="rounded-3xl bg-white/80 shadow-xl border border-slate-100 p-5 md:p-7">
+      <div class="flex flex-col md:flex-row gap-6 md:gap-8 items-start">
+        <div class="flex-1">
+          <h1 class="text-xl md:text-2xl font-extrabold text-slate-900 leading-snug">
+            สแกน QR เพื่อเพิ่มเพื่อน <span class="text-pink-500">Arisa</span> บน LINE
+          </h1>
+          <p class="mt-2 text-sm md:text-base text-slate-600">
+            สแกน QR ด้านขวาเพื่อเพิ่มเพื่อน จากนั้นกด “เปิดใน LINE” เพื่อเริ่มใช้งาน MedEase ได้ทันที
+          </p>
+
+          <div class="mt-4 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-xs text-amber-800">
+            <p class="font-semibold mb-1">หมายเหตุสำคัญ</p>
+            <p>คำแนะนำจาก Arisa เป็นข้อมูลเบื้องต้น ไม่ใช่การวินิจฉัยโรค หากอาการรุนแรงให้พบแพทย์/โทรฉุกเฉินทันที</p>
+          </div>
+
+          <div class="mt-5 grid gap-3">
+            <button id="btnOpenInLine"
+              class="inline-flex items-center justify-center rounded-full bg-green-500 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-green-600">
+              เปิดใน LINE
+            </button>
+
+            <button id="btnCopyLink"
+              class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/70 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-white">
+              คัดลอกลิงก์เพิ่มเพื่อน
+            </button>
+
+            <a href="/index.html"
+              class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/70 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-white">
+              กลับหน้าแรก
+            </a>
+
+            <p id="status" class="text-center text-xs text-slate-500"></p>
+          </div>
+
+          <div class="mt-4 text-xs text-slate-500">
+            ถ้าสแกนไม่ได้: ใช้ปุ่ม “คัดลอกลิงก์” แล้ววางในเบราว์เซอร์/แชต LINE
+          </div>
+        </div>
+
+        <div class="w-full md:w-[280px]">
+          <div class="rounded-2xl bg-white/70 border border-slate-100 p-4">
+            <p class="text-sm font-semibold text-slate-900">QR Code</p>
+            <p class="text-xs text-slate-500">สแกนเพื่อเพิ่มเพื่อน Arisa</p>
+
+            <!-- รูปอยู่ที่ /public/image/QR.jpg  (บน Hosting เรียกเป็น /image/QR.jpg) -->
+            <div class="mt-3 grid place-items-center">
+              <img
+                src="/image/QR.jpg"
+                alt="QR Code เพิ่มเพื่อน Arisa"
+                class="h-[220px] w-[220px] rounded-2xl border border-slate-200 bg-white object-contain"
+                onerror="this.style.display='none'; document.getElementById('qrFallback').style.display='block';"
+              />
+              <div id="qrFallback" style="display:none;"
+                   class="w-full mt-2 rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600">
+                ไม่พบไฟล์รูป QR<br/>
+                ตรวจสอบว่าไฟล์อยู่ที่ <span class="font-mono">/public/image/QR.jpg</span>
+              </div>
+            </div>
+
+            <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-3 text-xs text-slate-600">
+              <p class="font-semibold text-slate-900 mb-1">ลิงก์เพิ่มเพื่อน</p>
+              <p class="font-mono break-all">https://lin.ee/FDXxzOd</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="mt-6 text-center text-xs text-slate-500">
+      MedEase © 2025
+    </footer>
+  </main>
+
+  <script>
+    // ✅ ใส่ลิงก์จริงแล้ว
+    const LINE_OA_URL = "https://lin.ee/FDXxzOd";
+
+    // ถ้าคุณมี LIFF จริง และอยากให้ปุ่ม "เปิดใน LINE" เปิด LIFF ก่อน ให้ใส่ลิงก์ LIFF ที่นี่
+    // ถ้ายังไม่มี ให้ปล่อยว่าง
+    const LIFF_URL = "";
+
+    const statusEl = document.getElementById("status");
+    const openBtn = document.getElementById("btnOpenInLine");
+    const copyBtn = document.getElementById("btnCopyLink");
+
+    function getBestOpenUrl() {
+      if (LIFF_URL && LIFF_URL.trim().length > 0) return LIFF_URL.trim();
+      return LINE_OA_URL;
+    }
+
+    openBtn.addEventListener("click", () => {
+      const url = getBestOpenUrl();
+      if (!url) {
+        statusEl.textContent = "⚠️ ยังไม่ได้ตั้งค่า LINE_OA_URL";
+        return;
+      }
+      window.location.href = url;
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      const url = getBestOpenUrl();
+      if (!url) {
+        statusEl.textContent = "⚠️ ยังไม่ได้ตั้งค่า LINE_OA_URL";
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        statusEl.textContent = "✅ คัดลอกลิงก์เรียบร้อยแล้ว";
+      } catch (e) {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        statusEl.textContent = "✅ คัดลอกลิงก์เรียบร้อยแล้ว";
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>เข้าสู่ระบบ - MedEase Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: linear-gradient(135deg, #e3f6fc 0%, #fff1fb 60%, #e0fbe7 100%);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center px-4">
+
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-cyan-100">
+    <div class="flex flex-col items-center mb-3">
+      <img src="Arisa.png" alt="MedEase Logo" class="w-12 h-12 mb-2 rounded-xl shadow" />
+      <span class="text-cyan-400 font-bold text-lg">MedEase Admin</span>
+    </div>
+    <h2 class="text-2xl font-bold text-center text-pink-400 mb-6">🔐 เข้าสู่ระบบแอดมิน</h2>
+
+    <form id="loginForm" class="space-y-5">
+      <div>
+        <label class="block text-sm text-cyan-700 mb-1">อีเมล</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          required
+          class="w-full border border-pink-200 px-4 py-3 rounded-lg shadow-sm focus:ring-2 focus:ring-pink-200 focus:outline-none text-pink-600 placeholder-pink-200"
+        />
+      </div>
+      <div>
+        <label class="block text-sm text-cyan-700 mb-1">รหัสผ่าน</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          required
+          class="w-full border border-green-200 px-4 py-3 rounded-lg shadow-sm focus:ring-2 focus:ring-green-200 focus:outline-none text-green-600 placeholder-green-200"
+        />
+      </div>
+      <button
+        type="submit"
+        class="w-full bg-gradient-to-r from-pink-200 to-cyan-100 text-pink-900 py-3 rounded-full text-lg font-bold hover:from-cyan-100 hover:to-green-100 hover:text-green-700 shadow transition"
+      >
+        เข้าสู่ระบบ
+      </button>
+    </form>
+
+    <p id="loginMessage" class="text-sm text-center mt-4"></p>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzRiHElsEa_PFOf90mJXzVELsuHwG5_fM",
+      authDomain: "medeasehosting.firebaseapp.com",
+      projectId: "medeasehosting",
+      storageBucket: "medeasehosting.appspot.com",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    const form = document.getElementById("loginForm");
+    const message = document.getElementById("loginMessage");
+
+    // ฟังก์ชันหาหน้าเป้าหมายหลังล็อกอิน
+    function getNextUrl() {
+      const params = new URLSearchParams(location.search);
+      // ถ้ามี ?next=/xxx.html → ไปหน้านั้น
+      // ถ้าไม่มี → ไป admin.html เสมอ
+      return params.get("next") || "/admin.html";
+    }
+
+    // ถ้าผู้ใช้ล็อกอินอยู่แล้วแล้วเปิด login.html → ส่งไปหน้าเป้าหมายทันที
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        location.href = getNextUrl();
+      }
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = form.email.value.trim();
+      const password = form.password.value;
+
+      message.textContent = "🔄 กำลังตรวจสอบข้อมูล...";
+      message.className = "text-cyan-400 text-center mt-4";
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        message.textContent = "✅ เข้าสู่ระบบสำเร็จ กำลังนำทางไปยังแดชบอร์ด...";
+        message.className = "text-green-600 text-center mt-4";
+        location.href = getNextUrl();
+      } catch (err) {
+        console.error(err);
+        message.textContent = "❌ เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบอีเมล/รหัสผ่าน";
+        message.className = "text-pink-500 text-center mt-4";
+      }
+    });
+  </script>
+</body>
+</html>

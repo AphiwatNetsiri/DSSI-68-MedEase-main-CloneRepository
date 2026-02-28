@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>จัดการนัดหมาย - MedEase</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
+    import { getAuth, onIdTokenChanged, signOut } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      query,
+      orderBy,
+      addDoc,
+      doc,
+      updateDoc,
+      deleteDoc,
+      serverTimestamp,
+      Timestamp,
+    } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+
+    // ===== API BASE: อ่านจาก ?api= ช่วยทดสอบกับ ngrok ได้ง่าย =====
+    const rawApi = new URLSearchParams(location.search).get("api")
+      || "https://semimechanical-subovoid-hue.ngrok-free.dev"; // เปลี่ยนเป็นโดเมน API ของคุณตอนทดสอบ
+    const API_BASE = rawApi.replace(/\/$/, "");
+    const makeUrl  = (p) => API_BASE + (p.startsWith("/") ? p : "/" + p);
+
+    // ===== Highlight (docId) จาก appointment.html =====
+    const HIGHLIGHT_ID = new URLSearchParams(location.search).get("highlight") || "";
+
+    // ===== Firebase =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzRiHElsEa_PFOf90mJXzVELsuHwG5_fM",
+      authDomain: "medeasehosting.firebaseapp.com",
+      projectId: "medeasehosting",
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    // ===== Labels & Helpers =====
+    const STATUS_LABEL = {
+      pending: "รอการยืนยัน",
+      confirmed: "ยืนยันแล้ว",
+      rescheduled: "เลื่อนนัด",
+      cancelled: "ยกเลิก",
+    };
+
+    // รองรับทั้งค่าเดิม (general/pediatrics/surgery, morning/afternoon) และค่าใหม่แบบไทย
+    const DEPT_LABEL = { general: "อายุรกรรม", pediatrics: "กุมารเวช", surgery: "ศัลยกรรม" };
+    const SESSION_LABEL = { morning: "เช้า", afternoon: "บ่าย", evening: "เย็น" };
+
+    const normalizeDept = (v) => DEPT_LABEL[v] || v || "-";
+    const normalizeSession = (v) => SESSION_LABEL[v] || v || "-";
+
+    const toThaiDate = (d) => {
+      try { return d.toLocaleDateString("th-TH"); } catch { return "-"; }
+    };
+    const toThaiDateTime = (d) => {
+      try { return d.toLocaleString("th-TH"); } catch { return "-"; }
+    };
+
+    // ✅ รองรับสคีม่าใหม่ (dateKey, dateAt) และสคีม่าเดิม (dateStr, date)
+    const fmtDateStr = (data) => {
+      if (data?.dateKey) {
+        const [y,m,d] = String(data.dateKey).split("-");
+        if (y && m && d) return `${d}/${m}/${y}`;
+      }
+      if (data?.dateAt?.toDate) return toThaiDate(data.dateAt.toDate());
+      if (data?.dateStr) return data.dateStr;
+      if (data?.date?.toDate) return toThaiDate(data.date.toDate());
+      return "-";
+    };
+
+    const fmtCreatedAt = (ts) => ts?.toDate ? toThaiDateTime(ts.toDate()) : "-";
+
+    const toDateKey = (anyData) => {
+      if (anyData?.dateKey) return String(anyData.dateKey);
+      if (anyData?.dateAt?.toDate) {
+        const d = anyData.dateAt.toDate();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${dd}`;
+      }
+      if (anyData?.date?.toDate) {
+        const d = anyData.date.toDate();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${dd}`;
+      }
+      return "";
+    };
+
+    const dateKeyToDateAt = (dateKey) => {
+      if (!dateKey) return null;
+      const d = new Date(`${dateKey}T00:00:00`);
+      if (Number.isNaN(d.getTime())) return null;
+      return Timestamp.fromDate(d);
+    };
+
+    const escapeHtml = (s) => String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
+    const statusBadgeHtml = (statusRaw) => {
+      const s = statusRaw || "pending";
+      const label = STATUS_LABEL[s] || s || "-";
+      const cls =
+        s === "confirmed"   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : s === "cancelled"   ? "bg-rose-50 text-rose-700 border-rose-200"
+      : s === "rescheduled" ? "bg-amber-50 text-amber-700 border-amber-200"
+      : "bg-slate-50 text-slate-700 border-slate-200";
+
+      return `<span class="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${cls}">${escapeHtml(label)}</span>`;
+    };
+
+    function setLoadingRow(msg = "กำลังโหลดข้อมูล...") {
+      const tableBody = document.getElementById("appointmentsTable");
+      tableBody.innerHTML = `<tr><td colspan="9" class="text-center p-4 text-gray-600">${escapeHtml(msg)}</td></tr>`;
+    }
+
+    function setEmptyRow() {
+      const tableBody = document.getElementById("appointmentsTable");
+      tableBody.innerHTML = `<tr><td colspan="9" class="text-center p-6 text-gray-500">ไม่มีนัดหมาย</td></tr>`;
+    }
+
+    function setErrorRow() {
+      const tableBody = document.getElementById("appointmentsTable");
+      tableBody.innerHTML = `<tr><td colspan="9" class="text-center p-4 text-rose-600">โหลดข้อมูลไม่สำเร็จ</td></tr>`;
+    }
+
+    // ===== State =====
+    let appointmentsCache = []; // [{ id, data, sortTsMs }]
+    let lastLoadedAt = null;
+
+    // ✅ โหมดผู้เยี่ยมชมเข้าได้เลย (ไม่บังคับล็อกอิน)
+    let IS_ADMIN = false;
+    let ADMIN_EMAIL = "-";
+
+    function setRoleUI() {
+      const adminEl = document.getElementById("admin-email");
+      const hostEl = document.getElementById("api-host");
+      const modeEl = document.getElementById("mode-pill");
+
+      if (hostEl) hostEl.textContent = API_BASE;
+
+      if (IS_ADMIN) {
+        if (adminEl) adminEl.textContent = ADMIN_EMAIL;
+        if (modeEl) {
+          modeEl.textContent = "โหมดแอดมิน";
+          modeEl.className = "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold bg-sky-50 text-sky-700 border-sky-200";
+        }
+        document.getElementById("btn-login")?.classList.add("hidden");
+        document.getElementById("btn-logout")?.classList.remove("hidden");
+        document.getElementById("admin-note")?.classList.add("hidden");
+      } else {
+        if (adminEl) adminEl.textContent = "ผู้เยี่ยมชม (ยังไม่ล็อกอิน)";
+        if (modeEl) {
+          modeEl.textContent = "โหมดอ่านอย่างเดียว";
+          modeEl.className = "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold bg-slate-50 text-slate-700 border-slate-200";
+        }
+        document.getElementById("btn-login")?.classList.remove("hidden");
+        document.getElementById("btn-logout")?.classList.add("hidden");
+        document.getElementById("admin-note")?.classList.remove("hidden");
+      }
+
+      // โชว์/ซ่อนส่วน Create + ปุ่ม Actions ตาม role
+      document.getElementById("createSection")?.classList.toggle("hidden", !IS_ADMIN);
+      document.getElementById("createHintGuest")?.classList.toggle("hidden", IS_ADMIN);
+    }
+
+    // ===== Auth: ถ้ามีก็ใช้ เพื่อปลดล็อกปุ่มจัดการ =====
+    onIdTokenChanged(auth, async (user) => {
+      try {
+        IS_ADMIN = false;
+        ADMIN_EMAIL = "-";
+
+        if (user) {
+          // ไม่ force refresh เพื่อไม่เด้งช้า แต่ยังอ่าน claims ได้
+          const tokenResult = await user.getIdTokenResult(false);
+          if (tokenResult.claims?.admin === true) {
+            IS_ADMIN = true;
+            ADMIN_EMAIL = user.email || user.uid;
+          }
+        }
+
+        setRoleUI();
+        await loadAppointments(true);
+      } catch (e) {
+        console.error(e);
+        IS_ADMIN = false;
+        setRoleUI();
+        await loadAppointments(true);
+      }
+    });
+
+    // ===== เรียก Admin API ด้วย Bearer ID Token (เฉพาะแอดมิน) =====
+    async function callAdmin(endpoint, id, btn, payload = {}) {
+      if (!IS_ADMIN || !auth.currentUser) {
+        alert("ต้องเข้าสู่ระบบแอดมินก่อน ถึงจะใช้งานปุ่มนี้ได้");
+        return { ok: false, needLogin: true };
+      }
+
+      try {
+        btn?.setAttribute("disabled", "disabled");
+        btn?.classList.add("opacity-60", "cursor-not-allowed");
+
+        const token = await auth.currentUser.getIdToken(true);
+        const url = makeUrl(`/admin/appointments/${encodeURIComponent(id)}/${endpoint}`);
+
+        const res = await fetch(url, {
+          method: "POST",
+          mode: "cors",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload || {}),
+        });
+
+        if (res.status === 401 || res.status === 403) {
+          alert("เซสชันหมดอายุ/ไม่มีสิทธิ์ กรุณาเข้าสู่ระบบใหม่");
+          await signOut(auth);
+          IS_ADMIN = false;
+          setRoleUI();
+          return { ok: false, authFail: true };
+        }
+
+        let data = {};
+        const ct = res.headers.get("content-type") || "";
+        if (ct.includes("application/json")) data = await res.json().catch(() => ({}));
+        if (res.ok && (data.ok ?? true)) return { ok: true, data };
+
+        const txt = await res.text().catch(()=> "");
+        throw new Error(data.error || `HTTP ${res.status} ${res.statusText} — ${txt}`);
+      } catch (e) {
+        console.error(e);
+        alert("เกิดข้อผิดพลาด: " + e.message);
+        return { ok: false, error: e };
+      } finally {
+        btn?.removeAttribute("disabled");
+        btn?.classList.remove("opacity-60", "cursor-not-allowed");
+      }
+    }
+
+    // expose for inline onclick
+    window.confirmAppt = async (id, btn) => callAdmin("confirm-and-notify", id, btn);
+    window.cancelAppt = async (id, btn) => callAdmin("cancel", id, btn);
+    window.rescheduleAppt = async (id, btn) => callAdmin("reschedule", id, btn);
+
+    // ===== CRUD: Firestore (จำกัดเฉพาะ admin ใน UI) =====
+    async function createAppointmentFromForm() {
+      if (!IS_ADMIN) {
+        alert("ต้องเข้าสู่ระบบแอดมินก่อน ถึงจะเพิ่มนัดหมายจากหน้านี้ได้");
+        return;
+      }
+
+      const btn = document.getElementById("btn-create");
+      const errEl = document.getElementById("create-error");
+      const okEl  = document.getElementById("create-ok");
+      errEl.textContent = "";
+      okEl.textContent = "";
+
+      try {
+        btn.disabled = true;
+        btn.classList.add("opacity-60", "cursor-not-allowed");
+
+        const dateKey = document.getElementById("c-dateKey").value.trim();
+        const session = document.getElementById("c-session").value.trim();
+        const department = document.getElementById("c-department").value.trim();
+        const name = document.getElementById("c-name").value.trim();
+        const contact = document.getElementById("c-contact").value.trim();
+        const byUser = document.getElementById("c-byUser").value.trim();
+
+        if (!dateKey) throw new Error("กรุณาเลือกวันที่นัด");
+        if (!session) throw new Error("กรุณาเลือกช่วงเวลา");
+        if (!department) throw new Error("กรุณากรอกแผนก");
+        if (!name) throw new Error("กรุณากรอกชื่อคนไข้");
+        if (!contact) throw new Error("กรุณากรอกเบอร์โทร");
+
+        const dateAt = dateKeyToDateAt(dateKey);
+        if (!dateAt) throw new Error("วันที่ไม่ถูกต้อง");
+
+        const payload = {
+          dateKey,
+          dateAt,
+          session,
+          department,
+          name,
+          contact,
+          status: "pending",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+        if (byUser) payload.byUser = byUser;
+
+        await addDoc(collection(db, "appointments"), payload);
+
+        okEl.textContent = "เพิ่มนัดหมายสำเร็จ ✅";
+        document.getElementById("create-form").reset();
+        await loadAppointments(true);
+      } catch (e) {
+        errEl.textContent = e.message || "เพิ่มนัดหมายไม่สำเร็จ";
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove("opacity-60", "cursor-not-allowed");
+      }
+    }
+    window.createAppointmentFromForm = createAppointmentFromForm;
+
+    async function deleteAppointment(id) {
+      if (!IS_ADMIN) {
+        alert("ต้องเข้าสู่ระบบแอดมินก่อน ถึงจะลบนัดหมายได้");
+        return;
+      }
+      if (!confirm("ต้องการลบนัดหมายนี้จริงไหม?")) return;
+      try {
+        await deleteDoc(doc(db, "appointments", id));
+        appointmentsCache = appointmentsCache.filter(x => x.id !== id);
+        renderAppointments();
+        updateStats();
+      } catch (e) {
+        console.error(e);
+        alert("ลบไม่สำเร็จ: " + (e.message || e));
+      }
+    }
+    window.deleteAppointment = deleteAppointment;
+
+    async function updateBasicFields(id, patch) {
+      if (!IS_ADMIN) {
+        alert("ต้องเข้าสู่ระบบแอดมินก่อน ถึงจะแก้ไขได้");
+        return;
+      }
+      await updateDoc(doc(db, "appointments", id), {
+        ...patch,
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    // ===== UI: filters =====
+    function getFilterState() {
+      const q = (document.getElementById("q")?.value || "").trim().toLowerCase();
+      const st = (document.getElementById("filter-status")?.value || "").trim();
+      return { q, st };
+    }
+
+    function matchesFilter(item, filter) {
+      const d = item.data || {};
+      const status = d.status || "";
+      if (filter.st && status !== filter.st) return false;
+
+      if (!filter.q) return true;
+
+      const hay = [
+        d.name,
+        d.contact,
+        d.department,
+        d.session,
+        d.byUser,
+        item.id,
+        d.dateKey,
+        fmtDateStr(d),
+        STATUS_LABEL[d.status] || d.status
+      ].join(" ").toLowerCase();
+
+      return hay.includes(filter.q);
+    }
+
+    function wireFilterEvents() {
+      const qEl = document.getElementById("q");
+      const stEl = document.getElementById("filter-status");
+      const clearBtn = document.getElementById("btn-clear-filter");
+
+      const rerender = () => {
+        renderAppointments();
+        updateStats();
+      };
+
+      qEl?.addEventListener("input", rerender);
+      stEl?.addEventListener("change", rerender);
+      clearBtn?.addEventListener("click", () => {
+        if (qEl) qEl.value = "";
+        if (stEl) stEl.value = "";
+        rerender();
+      });
+    }
+
+    // ===== Modal: edit (เฉพาะแอดมิน) =====
+    function openEditModal(id) {
+      if (!IS_ADMIN) {
+        alert("ต้องเข้าสู่ระบบแอดมินก่อน ถึงจะแก้ไขได้");
+        return;
+      }
+      const item = appointmentsCache.find(x => x.id === id);
+      if (!item) return;
+
+      const d = item.data || {};
+      document.getElementById("e-id").value = id;
+
+      document.getElementById("e-dateKey").value = toDateKey(d) || "";
+      document.getElementById("e-session").value = d.session || "";
+      document.getElementById("e-department").value = d.department || "";
+      document.getElementById("e-name").value = d.name || "";
+      document.getElementById("e-contact").value = d.contact || "";
+      document.getElementById("e-byUser").value = d.byUser || "";
+      document.getElementById("e-status").value = d.status || "pending";
+
+      document.getElementById("edit-error").textContent = "";
+      document.getElementById("edit-ok").textContent = "";
+
+      document.getElementById("editModal").classList.remove("hidden");
+      document.body.classList.add("overflow-hidden");
+    }
+    window.openEditModal = openEditModal;
+
+    function closeEditModal() {
+      document.getElementById("editModal").classList.add("hidden");
+      document.body.classList.remove("overflow-hidden");
+    }
+    window.closeEditModal = closeEditModal;
+
+    async function saveEditModal() {
+      const btn = document.getElementById("btn-save-edit");
+      const errEl = document.getElementById("edit-error");
+      const okEl  = document.getElementById("edit-ok");
+      errEl.textContent = "";
+      okEl.textContent = "";
+
+      const id = document.getElementById("e-id").value;
+      const prev = appointmentsCache.find(x => x.id === id)?.data || {};
+
+      try {
+        if (!IS_ADMIN) throw new Error("ต้องเข้าสู่ระบบแอดมินก่อน");
+
+        btn.disabled = true;
+        btn.classList.add("opacity-60", "cursor-not-allowed");
+
+        const dateKey = document.getElementById("e-dateKey").value.trim();
+        const session = document.getElementById("e-session").value.trim();
+        const department = document.getElementById("e-department").value.trim();
+        const name = document.getElementById("e-name").value.trim();
+        const contact = document.getElementById("e-contact").value.trim();
+        const byUser = document.getElementById("e-byUser").value.trim();
+        const status = document.getElementById("e-status").value.trim() || "pending";
+
+        if (!dateKey) throw new Error("กรุณาเลือกวันที่นัด");
+        if (!session) throw new Error("กรุณากรอกช่วงเวลา");
+        if (!department) throw new Error("กรุณากรอกแผนก");
+        if (!name) throw new Error("กรุณากรอกชื่อคนไข้");
+        if (!contact) throw new Error("กรุณากรอกเบอร์โทร");
+
+        const dateAt = dateKeyToDateAt(dateKey);
+        if (!dateAt) throw new Error("วันที่ไม่ถูกต้อง");
+
+        // 1) อัปเดตฟิลด์พื้นฐานผ่าน Firestore
+        const patch = { dateKey, dateAt, session, department, name, contact };
+        patch.byUser = byUser ? byUser : ""; // allow clear
+        await updateBasicFields(id, patch);
+
+        // 2) ถ้าสถานะเปลี่ยน → ใช้ endpoint ตามระบบเดิม
+        const prevStatus = prev.status || "pending";
+        if (status !== prevStatus) {
+          if (status === "confirmed") {
+            const yes = confirm("ต้องการ “ยืนยันนัด” และ “ส่งแจ้งเตือน LINE” ใช่ไหม?");
+            if (yes) {
+              const r = await callAdmin("confirm-and-notify", id, btn, {});
+              if (!r.ok) throw new Error("ยืนยันผ่านระบบแจ้งเตือนไม่สำเร็จ");
+            } else {
+              await updateBasicFields(id, { status: "confirmed" });
+            }
+          } else if (status === "cancelled") {
+            const yes = confirm("ต้องการ “ยกเลิกนัด” ใช่ไหม?");
+            if (yes) {
+              const r = await callAdmin("cancel", id, btn, {});
+              if (!r.ok) throw new Error("ยกเลิกผ่านระบบไม่สำเร็จ");
+            } else {
+              await updateBasicFields(id, { status: "cancelled" });
+            }
+          } else if (status === "rescheduled") {
+            const yes = confirm("ต้องการ “เลื่อนนัด” ใช่ไหม?");
+            if (yes) {
+              const r = await callAdmin("reschedule", id, btn, {});
+              if (!r.ok) throw new Error("เลื่อนนัดผ่านระบบไม่สำเร็จ");
+            } else {
+              await updateBasicFields(id, { status: "rescheduled" });
+            }
+          } else {
+            await updateBasicFields(id, { status });
+          }
+        }
+
+        okEl.textContent = "บันทึกสำเร็จ ✅";
+        await loadAppointments(true);
+        setTimeout(closeEditModal, 350);
+      } catch (e) {
+        errEl.textContent = e.message || "บันทึกไม่สำเร็จ";
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove("opacity-60", "cursor-not-allowed");
+      }
+    }
+    window.saveEditModal = saveEditModal;
+
+    // ===== Actions buttons =====
+    async function doConfirm(id) {
+      if (!IS_ADMIN) return alert("ต้องเข้าสู่ระบบแอดมินก่อน");
+      const yes = confirm("ยืนยันนัด และส่งแจ้งเตือนผ่าน LINE ใช่ไหม?");
+      if (!yes) return;
+      const btn = document.querySelector(`[data-btn="confirm"][data-id="${CSS.escape(id)}"]`);
+      const r = await callAdmin("confirm-and-notify", id, btn, {});
+      if (r.ok) await loadAppointments(true);
+    }
+    async function doCancel(id) {
+      if (!IS_ADMIN) return alert("ต้องเข้าสู่ระบบแอดมินก่อน");
+      const yes = confirm("ต้องการยกเลิกนัดนี้ใช่ไหม?");
+      if (!yes) return;
+      const btn = document.querySelector(`[data-btn="cancel"][data-id="${CSS.escape(id)}"]`);
+      const r = await callAdmin("cancel", id, btn, {});
+      if (r.ok) await loadAppointments(true);
+    }
+    async function doReschedule(id) {
+      if (!IS_ADMIN) return alert("ต้องเข้าสู่ระบบแอดมินก่อน");
+      const yes = confirm("ต้องการเลื่อนนัดนี้ใช่ไหม?");
+      if (!yes) return;
+      const btn = document.querySelector(`[data-btn="reschedule"][data-id="${CSS.escape(id)}"]`);
+      const r = await callAdmin("reschedule", id, btn, {});
+      if (r.ok) await loadAppointments(true);
+    }
+    window.doConfirm = doConfirm;
+    window.doCancel = doCancel;
+    window.doReschedule = doReschedule;
+
+    function actionButtonsHtml(id, status) {
+      // ถ้าไม่ใช่แอดมิน = ไม่แสดงปุ่มจัดการ
+      if (!IS_ADMIN) {
+        return `<div class="text-xs text-slate-500 text-right">—</div>`;
+      }
+
+      const s = status || "pending";
+
+      const pill = (cls, text, attrs, onclick) => `
+        <button
+          ${attrs || ""}
+          class="inline-flex items-center justify-center rounded-full border bg-white px-3 py-1 text-xs md:text-sm font-medium hover:bg-gray-50 ${cls}"
+          onclick="${onclick}"
+        >${text}</button>
+      `;
+
+      const btnEdit = pill("border-slate-300 text-slate-700 hover:bg-slate-50", "แก้ไข", "", `openEditModal('${id}')`);
+      const btnDel  = pill("border-rose-500 text-rose-600 hover:bg-rose-50", "ลบ", "", `deleteAppointment('${id}')`);
+
+      if (s === "pending") {
+        const btnConfirm = pill(
+          "border-emerald-500 text-emerald-600 hover:bg-emerald-50",
+          "ยืนยัน",
+          `data-btn="confirm" data-id="${id}"`,
+          `doConfirm('${id}')`
+        );
+        const btnCancel = pill(
+          "border-rose-500 text-rose-600 hover:bg-rose-50",
+          "ยกเลิก",
+          `data-btn="cancel" data-id="${id}"`,
+          `doCancel('${id}')`
+        );
+        return `<div class="flex flex-wrap gap-2 justify-end">${btnEdit}${btnConfirm}${btnCancel}${btnDel}</div>`;
+      }
+
+      if (s === "confirmed") {
+        const btnRes = pill(
+          "border-amber-500 text-amber-600 hover:bg-amber-50",
+          "เลื่อนนัด",
+          `data-btn="reschedule" data-id="${id}"`,
+          `doReschedule('${id}')`
+        );
+        const btnCancel = pill(
+          "border-rose-500 text-rose-600 hover:bg-rose-50",
+          "ยกเลิก",
+          `data-btn="cancel" data-id="${id}"`,
+          `doCancel('${id}')`
+        );
+        return `<div class="flex flex-wrap gap-2 justify-end">${btnEdit}${btnRes}${btnCancel}${btnDel}</div>`;
+      }
+
+      return `<div class="flex flex-wrap gap-2 justify-end">${btnEdit}${btnDel}</div>`;
+    }
+
+    // ===== Read + Render =====
+    async function loadAppointments(silent = false) {
+      if (!silent) setLoadingRow("กำลังโหลดข้อมูล...");
+
+      try {
+        // อ่านรายการ (ต้องให้ Firestore Rules อนุญาต read สำหรับ public ถ้าต้องการให้เข้าได้แบบไม่ล็อกอิน)
+        const qRef = query(collection(db, "appointments"), orderBy("createdAt", "desc"));
+        const qs = await getDocs(qRef);
+
+        if (qs.empty) {
+          appointmentsCache = [];
+          setEmptyRow();
+          updateStats();
+          lastLoadedAt = new Date();
+          setLastLoadedLabel();
+          return;
+        }
+
+        appointmentsCache = [];
+        qs.forEach((docSnap) => {
+          const data = docSnap.data() || {};
+          const id = docSnap.id;
+
+          const createdMs = (data?.createdAt?.toDate ? data.createdAt.toDate().getTime() : null);
+          const updatedMs = (data?.updatedAt?.toDate ? data.updatedAt.toDate().getTime() : null);
+          const dateAtMs  = (data?.dateAt?.toDate ? data.dateAt.toDate().getTime() : null);
+
+          const sortMs = createdMs ?? updatedMs ?? dateAtMs ?? 0;
+          appointmentsCache.push({ id, data, sortTsMs: sortMs });
+        });
+
+        appointmentsCache.sort((a, b) => (b.sortTsMs || 0) - (a.sortTsMs || 0));
+
+        renderAppointments();
+        updateStats();
+        lastLoadedAt = new Date();
+        setLastLoadedLabel();
+
+        // ✅ scroll + highlight ถ้ามี highlight id
+        if (HIGHLIGHT_ID) {
+          const row = document.querySelector(`[data-appt-id="${CSS.escape(HIGHLIGHT_ID)}"]`);
+          if (row) {
+            row.classList.add("ring-2", "ring-emerald-300", "bg-emerald-50/40");
+            row.scrollIntoView({ behavior: "smooth", block: "center" });
+            const h = document.getElementById("highlight-pill");
+            if (h) {
+              h.textContent = `กำลังไฮไลต์: ${HIGHLIGHT_ID}`;
+              h.classList.remove("hidden");
+            }
+          }
+        }
+      } catch (e) {
+        console.error(e);
+        setErrorRow();
+      }
+    }
+    window.reloadAppointments = () => loadAppointments(false);
+
+    function setLastLoadedLabel() {
+      const el = document.getElementById("last-loaded");
+      if (!el) return;
+      el.textContent = lastLoadedAt ? toThaiDateTime(lastLoadedAt) : "-";
+    }
+
+    function renderAppointments() {
+      const tableBody = document.getElementById("appointmentsTable");
+      const filter = getFilterState();
+
+      const rows = appointmentsCache.filter(item => matchesFilter(item, filter));
+      if (rows.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="9" class="text-center p-6 text-gray-500">ไม่พบนัดหมายที่ตรงกับเงื่อนไข</td></tr>`;
+        return;
+      }
+
+      tableBody.innerHTML = "";
+      for (const item of rows) {
+        const { id, data } = item;
+
+        const deptTH = normalizeDept(data.department);
+        const sessionTH = normalizeSession(data.session);
+        const dateStr = fmtDateStr(data);
+        const createdAt = fmtCreatedAt(data.createdAt);
+        const status = data.status || "pending";
+
+        const patient = data.name || "-";
+        const contact = data.contact || "-";
+        const byUser = (data.byUser === "" ? "-" : (data.byUser || "-"));
+
+        const tr = document.createElement("tr");
+        tr.className = "border-b last:border-0 hover:bg-slate-50/60";
+        tr.setAttribute("data-appt-id", id);
+
+        tr.innerHTML = `
+          <td class="px-4 py-3 whitespace-nowrap text-sm">
+            <div class="font-medium text-slate-800">${escapeHtml(deptTH)}</div>
+            <div class="text-xs text-slate-500">ช่วง: ${escapeHtml(sessionTH)}</div>
+          </td>
+
+          <td class="px-4 py-3 whitespace-nowrap text-sm">
+            <div class="font-medium">${escapeHtml(dateStr)}</div>
+            <div class="text-xs text-slate-500">บันทึก: ${escapeHtml(createdAt)}</div>
+          </td>
+
+          <td class="px-4 py-3 text-sm">
+            <div class="font-medium text-slate-800">${escapeHtml(patient)}</div>
+            <div class="text-xs text-slate-600">โทร: ${escapeHtml(contact)}</div>
+          </td>
+
+          <td class="px-4 py-3 text-sm">
+            <div class="text-xs text-slate-700 break-all">${escapeHtml(byUser)}</div>
+            <div class="text-[11px] text-slate-400 break-all">Doc: ${escapeHtml(id)}</div>
+          </td>
+
+          <td class="px-4 py-3 whitespace-nowrap text-sm col-status">
+            ${statusBadgeHtml(status)}
+          </td>
+
+          <td class="px-4 py-3 text-right col-actions">
+            ${actionButtonsHtml(id, status)}
+          </td>
+        `;
+        tableBody.appendChild(tr);
+      }
+    }
+
+    function updateStats() {
+      const filter = getFilterState();
+      const rows = appointmentsCache.filter(item => matchesFilter(item, filter));
+
+      const total = rows.length;
+      const count = { pending: 0, confirmed: 0, rescheduled: 0, cancelled: 0, other: 0 };
+      for (const r of rows) {
+        const s = r.data?.status || "pending";
+        if (count[s] != null) count[s] += 1;
+        else count.other += 1;
+      }
+
+      const elTotal = document.getElementById("stat-total");
+      const elP = document.getElementById("stat-pending");
+      const elC = document.getElementById("stat-confirmed");
+      const elR = document.getElementById("stat-rescheduled");
+      const elX = document.getElementById("stat-cancelled");
+
+      if (elTotal) elTotal.textContent = total;
+      if (elP) elP.textContent = count.pending;
+      if (elC) elC.textContent = count.confirmed;
+      if (elR) elR.textContent = count.rescheduled;
+      if (elX) elX.textContent = count.cancelled;
+    }
+
+    // ===== login/logout buttons =====
+    window.goLogin = () => (location.href = "login.html");
+    window.logout = async function () {
+      await signOut(auth);
+      IS_ADMIN = false;
+      setRoleUI();
+    };
+
+    // init
+    window.addEventListener("DOMContentLoaded", async () => {
+      wireFilterEvents();
+
+      // create form handler
+      document.getElementById("create-form")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        createAppointmentFromForm();
+      });
+
+      // modal handlers
+      document.getElementById("btn-close-modal")?.addEventListener("click", closeEditModal);
+      document.getElementById("overlay")?.addEventListener("click", closeEditModal);
+      document.getElementById("edit-form")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        saveEditModal();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          const modal = document.getElementById("editModal");
+          if (modal && !modal.classList.contains("hidden")) closeEditModal();
+        }
+      });
+
+      // โหลดรายการทันที (เผื่อกรณี auth ยังไม่พร้อม)
+      setRoleUI();
+      await loadAppointments(false);
+    });
+  </script>
+</head>
+
+<body class="bg-gray-50 min-h-screen text-gray-800">
+  <!-- Header -->
+  <header class="border-b bg-white">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap gap-3 items-center justify-between">
+      <div>
+        <p class="text-xs font-semibold text-sky-700">MedEase Admin</p>
+        <div class="flex items-center gap-2">
+          <h1 class="text-lg md:text-xl font-bold">จัดการนัดหมาย</h1>
+          <span id="mode-pill"
+                class="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold bg-slate-50 text-slate-700 border-slate-200">
+            โหมดอ่านอย่างเดียว
+          </span>
+        </div>
+        <p class="mt-0.5 text-xs text-slate-500">
+          สถานะผู้ใช้: <span id="admin-email" class="font-medium text-slate-700">-</span>
+          · โหลดล่าสุด: <span id="last-loaded" class="font-medium text-slate-700">-</span>
+        </p>
+        <p id="highlight-pill" class="hidden mt-1 text-xs text-emerald-700 font-semibold"></p>
+      </div>
+
+      <div class="flex flex-wrap gap-2 items-center justify-end">
+        <span class="text-xs bg-gray-100 border border-gray-200 px-2 py-1 rounded text-gray-600">
+          API: <code id="api-host" class="text-gray-800"></code>
+        </span>
+
+        <a
+          href="admin.html"
+          class="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-300 bg-white text-xs md:text-sm text-gray-700 hover:bg-gray-50"
+        >
+          แดชบอร์ด
+        </a>
+
+        <button
+          onclick="reloadAppointments()"
+          class="inline-flex items-center px-3 py-1.5 rounded-md bg-sky-600 text-white text-xs md:text-sm font-medium hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-300"
+        >
+          รีเฟรช
+        </button>
+
+        <button
+          id="btn-login"
+          onclick="goLogin()"
+          class="inline-flex items-center px-3 py-1.5 rounded-md bg-slate-900 text-white text-xs md:text-sm font-medium hover:bg-slate-800"
+        >
+          เข้าสู่ระบบแอดมิน
+        </button>
+
+        <button
+          id="btn-logout"
+          onclick="logout()"
+          class="hidden inline-flex items-center px-3 py-1.5 rounded-md bg-rose-500 text-white text-xs md:text-sm font-medium hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-300"
+        >
+          ออกจากระบบ
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+    <!-- Guest note -->
+    <div id="admin-note" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+      ตอนนี้คุณอยู่ใน <b>โหมดอ่านอย่างเดียว</b> (เข้าได้โดยไม่ต้องล็อกอิน) — ใช้เพื่อ “รับ/ดูรายการนัดหมาย” จากหน้า appointment.html ได้ทันที<br>
+      หากต้องการ <b>ยืนยัน/ยกเลิก/เลื่อนนัด/แก้ไข/ลบ</b> กรุณากด “เข้าสู่ระบบแอดมิน”
+    </div>
+
+    <!-- Top: Create + Filters -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <!-- Create form (เฉพาะแอดมิน) -->
+      <section id="createSection" class="hidden lg:col-span-5 bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div class="p-4 border-b">
+          <h2 class="font-bold text-slate-800">เพิ่มนัดหมาย (เจ้าหน้าที่จองให้)</h2>
+          <p class="text-xs text-slate-500 mt-1">สร้างนัดใหม่ใน Firestore (status = รอการยืนยัน)</p>
+        </div>
+
+        <form id="create-form" class="p-4 space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-medium text-slate-700">วันที่นัด</label>
+              <input id="c-dateKey" type="date" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" />
+            </div>
+            <div>
+              <label class="text-xs font-medium text-slate-700">ช่วงเวลา</label>
+              <select id="c-session" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200">
+                <option value="">-- เลือก --</option>
+                <option value="เช้า">เช้า</option>
+                <option value="บ่าย">บ่าย</option>
+                <option value="เย็น">เย็น</option>
+                <option value="morning">morning (legacy)</option>
+                <option value="afternoon">afternoon (legacy)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs font-medium text-slate-700">แผนก</label>
+            <input id="c-department" type="text" placeholder="เช่น อายุรกรรม / กุมารเวช / ศัลยกรรม"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" />
+            <p class="text-[11px] text-slate-400 mt-1">รองรับทั้ง “ภาษาไทย” และ legacy: general/pediatrics/surgery</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-medium text-slate-700">ชื่อคนไข้</label>
+              <input id="c-name" type="text" placeholder="เช่น นายกอล์ฟ ลีน"
+                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" />
+            </div>
+            <div>
+              <label class="text-xs font-medium text-slate-700">เบอร์โทร</label>
+              <input id="c-contact" type="tel" placeholder="เช่น 098xxxxxxx"
+                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" />
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs font-medium text-slate-700">byUser (ไม่บังคับ)</label>
+            <input id="c-byUser" type="text" placeholder="UID ผู้ใช้ LINE (ถ้าจองให้ทางโทรศัพท์ปล่อยว่างได้)"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" />
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button id="btn-create" type="submit"
+              class="inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-300">
+              บันทึกนัดหมาย
+            </button>
+            <span id="create-ok" class="text-sm text-emerald-600"></span>
+            <span id="create-error" class="text-sm text-rose-600"></span>
+          </div>
+        </form>
+      </section>
+
+      <!-- Create hint for guest -->
+      <section id="createHintGuest" class="hidden lg:col-span-5 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+        <h2 class="font-bold text-slate-800">เพิ่มนัดหมาย (เจ้าหน้าที่จองให้)</h2>
+        <p class="mt-1 text-sm text-slate-600">
+          โหมดผู้เยี่ยมชมจะยังไม่เปิดให้เพิ่ม/แก้ไขจากหน้านี้ เพื่อความปลอดภัย ✅
+        </p>
+        <p class="mt-2 text-xs text-slate-500">
+          หากต้องการเพิ่ม/แก้ไข/ยืนยัน กรุณากด “เข้าสู่ระบบแอดมิน”
+        </p>
+      </section>
+
+      <!-- Filters + Stats -->
+      <section class="lg:col-span-7 space-y-4">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <div class="flex flex-col md:flex-row md:items-end gap-3">
+            <div class="flex-1">
+              <label class="text-xs font-medium text-slate-700">ค้นหา</label>
+              <input id="q" type="text" placeholder="ค้นหาจาก ชื่อ/เบอร์/แผนก/ช่วงเวลา/UID/Doc ID/วันที่"
+                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" />
+            </div>
+            <div class="w-full md:w-56">
+              <label class="text-xs font-medium text-slate-700">กรองสถานะ</label>
+              <select id="filter-status"
+                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200">
+                <option value="">ทั้งหมด</option>
+                <option value="pending">รอการยืนยัน</option>
+                <option value="confirmed">ยืนยันแล้ว</option>
+                <option value="rescheduled">เลื่อนนัด</option>
+                <option value="cancelled">ยกเลิก</option>
+              </select>
+            </div>
+            <button id="btn-clear-filter"
+              class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              ล้างตัวกรอง
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p class="text-xs text-slate-500">ทั้งหมด (ตามตัวกรอง)</p>
+            <p class="text-2xl font-bold text-slate-800" id="stat-total">0</p>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p class="text-xs text-slate-500">รอการยืนยัน</p>
+            <p class="text-2xl font-bold text-slate-800" id="stat-pending">0</p>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p class="text-xs text-slate-500">ยืนยันแล้ว</p>
+            <p class="text-2xl font-bold text-slate-800" id="stat-confirmed">0</p>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p class="text-xs text-slate-500">เลื่อน/ยกเลิก</p>
+            <p class="text-2xl font-bold text-slate-800">
+              <span id="stat-rescheduled">0</span><span class="text-slate-300 mx-1">/</span><span id="stat-cancelled">0</span>
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Table -->
+    <section class="overflow-hidden bg-white rounded-xl shadow-sm border border-gray-200">
+      <div class="px-4 py-3 border-b flex items-center justify-between gap-3">
+        <div>
+          <h2 class="font-bold text-slate-800">รายการนัดหมาย</h2>
+          <p class="text-xs text-slate-500">เรียงจาก “เวลาที่เพิ่ม (createdAt)” ใหม่ → เก่า (fallback: updatedAt/dateAt)</p>
+        </div>
+        <button
+          onclick="reloadAppointments()"
+          class="inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs md:text-sm font-medium hover:bg-slate-800"
+        >
+          โหลดใหม่
+        </button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-left text-sm">
+          <thead class="bg-slate-100 text-slate-700 text-xs md:text-sm">
+            <tr>
+              <th class="px-4 py-3">แผนก / ช่วงเวลา</th>
+              <th class="px-4 py-3">วันที่ / เวลาเพิ่ม</th>
+              <th class="px-4 py-3">คนไข้</th>
+              <th class="px-4 py-3">ผู้ใช้/เอกสาร</th>
+              <th class="px-4 py-3">สถานะ</th>
+              <th class="px-4 py-3 text-right">การทำงาน</th>
+            </tr>
+          </thead>
+          <tbody id="appointmentsTable" class="divide-y divide-gray-100"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <p class="text-xs text-gray-500 leading-relaxed">
+      ตั้งค่า API ชั่วคราวได้ด้วยพารามิเตอร์
+      <code class="bg-gray-100 px-1 py-0.5 rounded">&quest;api=https://&lt;YOUR&gt;.ngrok-free.app</code><br/>
+      ตัวอย่าง:
+      <code class="bg-gray-100 px-1 py-0.5 rounded">
+        https://medeasehosting.web.app/admin-appointments.html?api=https://xxxx.ngrok-free.app
+      </code>
+    </p>
+  </main>
+
+  <!-- Edit Modal (เฉพาะแอดมิน) -->
+  <div id="editModal" class="hidden fixed inset-0 z-50">
+    <div id="overlay" class="absolute inset-0 bg-black/40"></div>
+
+    <div class="relative mx-auto mt-10 w-[92%] max-w-2xl rounded-2xl bg-white shadow-xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 border-b flex items-start justify-between gap-3">
+        <div>
+          <h3 class="font-bold text-slate-800">แก้ไขนัดหมาย</h3>
+          <p class="text-xs text-slate-500">แก้ไขข้อมูลพื้นฐานผ่าน Firestore · เปลี่ยนสถานะสำคัญจะเรียก Backend endpoint</p>
+        </div>
+        <button id="btn-close-modal" type="button"
+          class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          ปิด
+        </button>
+      </div>
+
+      <form id="edit-form" class="p-5 space-y-3">
+        <input id="e-id" type="hidden" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-700">วันที่นัด</label>
+            <input id="e-dateKey" type="date"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-700">ช่วงเวลา</label>
+            <input id="e-session" type="text" placeholder="เช่น เช้า / บ่าย / morning"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" />
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs font-medium text-slate-700">แผนก</label>
+          <input id="e-department" type="text" placeholder="เช่น อายุรกรรม"
+            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-700">ชื่อคนไข้</label>
+            <input id="e-name" type="text"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-700">เบอร์โทร</label>
+            <input id="e-contact" type="tel"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-700">byUser (ลบค่าได้)</label>
+            <input id="e-byUser" type="text" placeholder="UID หรือปล่อยว่างเพื่อล้าง"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-700">สถานะ</label>
+            <select id="e-status"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200">
+              <option value="pending">รอการยืนยัน</option>
+              <option value="confirmed">ยืนยันแล้ว (จะเรียก confirm-and-notify)</option>
+              <option value="rescheduled">เลื่อนนัด (จะเรียก reschedule)</option>
+              <option value="cancelled">ยกเลิก (จะเรียก cancel)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 pt-2">
+          <button id="btn-save-edit" type="submit"
+            class="inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-300">
+            บันทึก
+          </button>
+          <span id="edit-ok" class="text-sm text-emerald-600"></span>
+          <span id="edit-error" class="text-sm text-rose-600"></span>
+        </div>
+
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          หมายเหตุ: การ “ยืนยัน/ยกเลิก/เลื่อนนัด” จะใช้ endpoint ฝั่ง backend ตามระบบเดิม เพื่อให้ส่ง LINE notify ได้ถูกต้อง
+        </p>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

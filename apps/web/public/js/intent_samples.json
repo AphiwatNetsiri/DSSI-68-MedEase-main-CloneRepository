@@ -1,0 +1,13 @@
+[
+  {"intent": "APPOINTMENT", "text": "นัดหมายแพทย์"},
+  {"intent": "APPOINTMENT", "text": "ขอนัดหมอ"},
+  {"intent": "APPOINTMENT", "text": "จองคิวพบแพทย์"},
+  {"intent": "CERTIFICATE", "text": "ขอใบรับรองแพทย์"},
+  {"intent": "CERTIFICATE", "text": "อยากได้ใบรับรองแพทย์"},
+  {"intent": "NEWS", "text": "ข่าวสุขภาพ"},
+  {"intent": "HEALTH_RECORD", "text": "บันทึกสุขภาพ"},
+  {"intent": "SMALL_TALK", "text": "สวัสดี"},
+  {"intent": "SMALL_TALK", "text": "ใครสร้างอาริศา"},
+  {"intent": "GENERAL", "text": "ช่วยด้วย"},
+  {"intent": "GENERAL", "text": "ยังไม่แน่ใจ"}
+]

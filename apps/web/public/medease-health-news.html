@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>MedEase Health News</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- ฟอนต์ -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    body {
+      font-family: 'Sarabun', system-ui, -apple-system, BlinkMacSystemFont,
+        'Segoe UI', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* โทน/พื้นหลังให้คล้าย index.html */
+    .hero-bg {
+      background:
+        radial-gradient(circle at 0% 0%, #ffe4f3 0, transparent 55%),
+        radial-gradient(circle at 100% 0%, #dbeafe 0, transparent 55%),
+        radial-gradient(circle at 50% 120%, #dcfce7 0, #f8fafc 60%);
+      min-height: 100vh;
+    }
+
+    .fade-in {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeIn 0.6s ease-out forwards;
+    }
+    @keyframes fadeIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .news-card {
+      border: 1px solid #eaf5f8;
+      box-shadow: 0 10px 30px rgba(2, 132, 199, 0.08);
+    }
+  </style>
+</head>
+
+<body class="hero-bg text-slate-700">
+  <!-- Topbar (sticky glass) -->
+  <header class="sticky top-0 z-50 border-b border-white/60 bg-white/75 backdrop-blur">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      <a href="/index.html" class="flex items-center gap-3 min-w-0">
+        <img
+          src="Arisa.png"
+          alt="MedEase Logo"
+          class="w-9 h-9 rounded-full object-contain shadow-sm border border-pink-200 bg-white"
+        />
+        <div class="leading-tight min-w-0">
+          <p class="text-xs text-pink-400 font-semibold">MedEase</p>
+          <h1 class="text-base md:text-lg font-bold text-slate-900 truncate">
+            ข่าวสุขภาพ
+          </h1>
+        </div>
+      </a>
+
+      <div class="flex items-center gap-2">
+        <a
+          href="/index.html"
+          class="inline-flex items-center rounded-full border border-sky-200 bg-white/80 px-4 py-2 text-xs md:text-sm font-semibold text-sky-600 hover:bg-sky-50 active:scale-[0.99] transition"
+        >
+          กลับหน้าแรก
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="pb-10">
+    <!-- HERO -->
+    <section class="max-w-6xl mx-auto px-4 sm:px-6 pt-7 sm:pt-10">
+      <div class="bg-white/80 backdrop-blur border border-white/60 rounded-3xl p-5 sm:p-7 shadow-sm">
+        <div class="flex flex-col items-center text-center space-y-2">
+          <span class="inline-flex items-center gap-2 rounded-full border border-pink-200 bg-white/80 px-3 py-1 text-xs font-semibold text-pink-500 shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-green-400"></span>
+            MedEase Health News
+          </span>
+
+          <h2 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-snug text-slate-900">
+            <span class="text-pink-400 drop-shadow">ข่าวสุขภาพ</span>
+            <span class="text-cyan-500 drop-shadow">อัปเดตใหม่!</span>
+          </h2>
+
+          <p class="text-sm sm:text-base text-slate-600 font-semibold max-w-2xl">
+            รวมข่าวสารและความรู้สุขภาพที่น่าเชื่อถือ
+            <br class="hidden sm:block" />
+            คัดสรรโดยทีมเภสัชกรและผู้เชี่ยวชาญเฉพาะทาง เพื่อดูแลสุขภาพของทุกคน
+          </p>
+
+          <p class="text-cyan-600 text-xs sm:text-sm font-semibold">
+            ดูแลง่าย เข้าใจทุกคน
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Search / Filter -->
+    <section class="max-w-6xl mx-auto px-4 sm:px-6 mt-5 sm:mt-6">
+      <div class="bg-white/85 backdrop-blur rounded-3xl shadow-sm border border-white/60 p-4 sm:p-5">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h2 class="text-base sm:text-lg font-bold text-slate-900">
+            ข่าวสุขภาพ
+          </h2>
+          <span class="text-xs text-slate-500">ค้นหา / เรียงลำดับ</span>
+        </div>
+
+        <div class="grid gap-3 md:gap-4 md:grid-cols-12 items-end">
+          <!-- Search -->
+          <div class="md:col-span-8">
+            <label for="searchInput" class="block text-xs font-semibold text-slate-500 mb-1">
+              ค้นหา…
+            </label>
+            <div class="relative">
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="พิมพ์คำค้น เช่น ความดัน เบาหวาน ออกกำลังกาย..."
+                class="w-full pl-10 pr-4 py-2.5 rounded-full border border-pink-200 text-sm outline-none focus:ring-2 focus:ring-pink-200 placeholder-pink-300 bg-white shadow-sm"
+              />
+              <span class="absolute inset-y-0 left-3 flex items-center text-pink-300 text-sm">
+                <i class="fa-solid fa-magnifying-glass"></i>
+              </span>
+            </div>
+          </div>
+
+          <!-- ✅ หมวดข่าว (ลบออกจาก UI) แต่คง id ไว้เพื่อให้ JS เดิมทำงานเหมือนเดิม -->
+          <input type="hidden" id="categorySelect" value="" />
+
+          <!-- Sort -->
+          <div class="md:col-span-4">
+            <label for="sortSelect" class="block text-xs font-semibold text-slate-500 mb-1">
+              เรียงลำดับข้อมูล
+            </label>
+            <select
+              id="sortSelect"
+              class="w-full px-4 py-2.5 rounded-full border border-cyan-200 bg-white text-cyan-700 font-semibold text-sm shadow-sm"
+            >
+              <option value="latest">ข่าวล่าสุด</option>
+              <option value="oldest">เก่าสุดก่อน</option>
+              <option value="popular">ยอดนิยม</option>
+            </select>
+          </div>
+
+          <!-- Search button -->
+          <div class="md:col-span-12 flex justify-end">
+            <button
+              id="searchBtn"
+              class="w-full md:w-auto inline-flex items-center justify-center rounded-full bg-pink-500 px-6 py-2.5 text-sm font-semibold text-white shadow hover:bg-pink-600 active:scale-[0.99] transition"
+            >
+              ค้นหา
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LIST ข่าว -->
+    <section class="max-w-6xl mx-auto px-4 sm:px-6 py-7 sm:py-8">
+      <div
+        id="news-list"
+        class="grid gap-5 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+      ></div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-white/60 bg-white/70 backdrop-blur py-5">
+    <div
+      class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center gap-2"
+    >
+      <span class="flex items-center gap-2">
+        <img src="Arisa.png" class="w-7 h-7" alt="logo small" />
+        <span class="text-sm text-slate-700 font-semibold">MedEase © 2025</span>
+      </span>
+      <span class="text-xs text-slate-600 text-center sm:text-right">
+        Powered by DSSI,
+        <a
+          href="https://www.ubu.ac.th/"
+          class="hover:text-pink-500 underline"
+          target="_blank"
+          rel="noreferrer"
+        >UBU</a>
+      </span>
+    </div>
+  </footer>
+
+  <!-- Firebase + Logic (คงเดิมทั้งหมด) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      query,
+      orderBy,
+    } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzRiHElsEa_PFOf90mJXzVELsuHwG5_fM",
+      authDomain: "medeasehosting.firebaseapp.com",
+      projectId: "medeasehosting",
+      storageBucket: "medeasehosting.firebasestorage.app",
+      messagingSenderId: "527953102643",
+      appId: "1:527953102643:web:bce13ed6305ef583016046",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const newsList = document.getElementById("news-list");
+    const searchInput = document.getElementById("searchInput");
+    const categorySelect = document.getElementById("categorySelect");
+    const sortSelect = document.getElementById("sortSelect");
+    const searchBtn = document.getElementById("searchBtn");
+
+    let allNews = [];
+
+    // โหลดข่าวจาก Firestore
+    async function loadNews() {
+      const q = query(collection(db, "news"), orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+
+      allNews = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      }));
+
+      renderNews();
+    }
+
+    function getCreatedMs(n) {
+      return n.createdAt?.toMillis?.() ?? 0;
+    }
+
+    function renderNews() {
+      const search = (searchInput.value || "").toLowerCase();
+      const category = categorySelect.value; // ตอนนี้จะเป็น "" ตลอด (เท่ากับทุกหมวดหมู่)
+      const sortMode = sortSelect.value || "latest";
+
+      let filtered = allNews.filter(
+        (n) =>
+          (n.topic?.toLowerCase().includes(search)) &&
+          (!category || n.category === category)
+      );
+
+      // เรียงลำดับ
+      if (sortMode === "oldest") {
+        filtered.sort((a, b) => getCreatedMs(a) - getCreatedMs(b));
+      } else if (sortMode === "popular") {
+        filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
+      } else {
+        filtered.sort((a, b) => getCreatedMs(b) - getCreatedMs(a));
+      }
+
+      newsList.innerHTML = "";
+
+      if (filtered.length === 0) {
+        newsList.innerHTML =
+          '<div class="col-span-full text-center text-slate-400 mt-10">ไม่พบข่าวที่ตรงกับการค้นหา 😥</div>';
+        return;
+      }
+
+      filtered.forEach((data, i) => {
+        const createdAtMs = getCreatedMs(data);
+        const isNew =
+          data.isNew || Date.now() - createdAtMs < 1000 * 60 * 60 * 24 * 3;
+
+        const badgeNew = isNew
+          ? '<span class="ml-2 inline-block px-2 py-0.5 rounded-full text-xs bg-pink-100 text-pink-600 font-bold animate-pulse">ใหม่!</span>'
+          : "";
+        const badgeHot = data.isHot
+          ? '<span class="ml-1 px-2 py-0.5 rounded-full text-xs bg-cyan-100 text-cyan-500 font-bold">แนะนำ</span>'
+          : "";
+        const badgePopular = data.isPopular
+          ? '<span class="ml-1 px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-500 font-bold">ยอดนิยม</span>'
+          : "";
+
+        const dateObj = data.createdAt?.toDate?.() || new Date();
+        const formattedDate = dateObj.toLocaleDateString("th-TH", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
+        const mediaHTML =
+          data.mediaType === "youtube"
+            ? `
+          <div class="w-full aspect-video rounded-2xl overflow-hidden mb-3">
+            <iframe
+              src="${data.media}"
+              class="w-full h-full rounded-2xl"
+              frameborder="0"
+              allowfullscreen
+            ></iframe>
+          </div>`
+            : `
+          <img
+            src="${data.media}"
+            alt="ภาพข่าว"
+            class="w-full h-44 object-cover rounded-2xl mb-3 shadow"
+          />`;
+
+        const preview =
+          data.detail && Array.isArray(data.detail) ? data.detail[0] : "";
+
+        const el = document.createElement("div");
+        el.className =
+          "news-card rounded-3xl bg-white/95 backdrop-blur flex flex-col overflow-hidden p-5 fade-in";
+        el.style.animationDelay = `${i * 0.08}s`;
+
+        el.innerHTML = `
+          ${mediaHTML}
+          <h3 class="text-base font-bold text-pink-500 mb-1 flex items-center">
+            ${data.topic || "(ไม่มีหัวข้อข่าว)"}
+            ${badgeNew}${badgeHot}${badgePopular}
+          </h3>
+          <div class="flex items-center gap-2 text-xs text-cyan-500 mb-1">
+            <span>
+              <i class="fa-solid fa-calendar-days mr-1"></i>${formattedDate}
+            </span>
+          </div>
+          <p class="text-sm text-slate-600 line-clamp-2 mb-3">
+            ${preview || ""}
+          </p>
+          <button
+            onclick="location.href='news-detail.html?id=${data.id}'"
+            class="mt-auto rounded-full bg-gradient-to-r from-pink-200 to-cyan-100 text-pink-900 px-5 py-2.5 text-sm font-bold tracking-wide shadow transition hover:brightness-105 active:scale-[0.99]"
+          >
+            อ่านต่อ
+          </button>
+        `;
+
+        newsList.appendChild(el);
+      });
+    }
+
+    // event listeners
+    searchInput.addEventListener("input", renderNews);
+    categorySelect.addEventListener("change", renderNews);
+    sortSelect.addEventListener("change", renderNews);
+    searchBtn.addEventListener("click", renderNews);
+
+    // เริ่มโหลดข่าว
+    loadNews();
+  </script>
+
+  <!-- ไอคอน -->
+  <script
+    src="https://kit.fontawesome.com/1a3ec3aa3c.js"
+    crossorigin="anonymous"
+  ></script>
+</body>
+</html>

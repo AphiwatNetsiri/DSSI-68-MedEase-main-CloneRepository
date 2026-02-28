@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>จัดการผู้ดูแลระบบ - MedEase Admin</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
+
+  <!-- Font -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    :root {
+      --primary: #3b82f6;   /* blue-500/600 */
+      --secondary: #8b5cf6; /* violet-500 */
+      --bg-soft: #f8fafc;   /* slate-50 */
+      --text-main: #0f172a; /* slate-900 */
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Sarabun', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: var(--bg-soft);
+      color: var(--text-main);
+      min-height: 100vh;
+    }
+
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .sidebar {
+      background: #ffffff;
+      border-right: 1px solid #e2e8f0;
+    }
+    .sb-title { letter-spacing: 0.04em; }
+
+    .sidebar a {
+      transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+    }
+    .sidebar a:hover {
+      transform: translateX(2px);
+    }
+
+    .active {
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+
+    .sb-table-scroll { overflow-x: auto; }
+    .table { min-width: 700px; }
+    .sb-table th, .sb-table td { white-space: nowrap; }
+
+    .stat-card {
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+    }
+
+    .card-border {
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+    }
+
+    .btn-cyan {
+      background: #2563eb;
+      color: #ffffff;
+    }
+    .btn-cyan:hover {
+      background: #1d4ed8;
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar fixed top-0 left-0 h-full w-56 flex flex-col text-slate-700 shadow-sm z-10">
+    <div class="p-6 border-b border-slate-100">
+      <span class="sb-title text-2xl font-bold tracking-wide flex items-center gap-2 text-slate-900">
+        <i class="fa-solid fa-stethoscope text-pink-400"></i> MedEase
+      </span>
+      <div class="mt-2 text-xs text-slate-500">Admin Dashboard</div>
+    </div>
+
+    <nav class="flex-1 p-4 space-y-1 text-sm">
+      <a
+        href="https://medeasehosting.web.app/admin.html"
+        class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900"
+      >
+        <i class="fa fa-gauge-high mr-2"></i>แดชบอร์ดหลัก
+      </a>
+      <a
+        href="https://medeasehosting.web.app/admin-certificates.html"
+        class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900"
+      >
+        <i class="fa fa-file-medical mr-2"></i>ผู้ขอใบรับรอง
+      </a>
+      <a
+        href="https://medeasehosting.web.app/admin-users.html"
+        class="block px-4 py-2 rounded-lg active"
+      >
+        <i class="fa fa-user-shield mr-2"></i>แอดมิน
+      </a>
+    </nav>
+
+    <div class="mt-auto mb-6 px-6 text-xs text-slate-400">
+      © 2025 MedEase
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="ml-56 min-h-screen flex flex-col">
+
+    <!-- TOP BAR -->
+    <header class="bg-white/90 backdrop-blur border-b border-slate-100 mt-4 mx-4 card-border flex flex-wrap gap-4 items-center justify-between px-6 lg:px-8 py-4 shadow-sm">
+      <h1 class="text-lg md:text-xl font-bold text-slate-900 flex items-center gap-2">
+        <i class="fa-solid fa-user-shield text-pink-400"></i>
+        จัดการผู้ดูแลระบบ (Admins)
+      </h1>
+
+      <div class="flex flex-wrap gap-3 items-center">
+        <span class="text-xs md:text-sm text-slate-600">
+          เข้าสู่ระบบในชื่อ:
+          <span id="adminEmail" class="font-semibold text-slate-900">-</span>
+        </span>
+
+        <input
+          type="text"
+          placeholder="ค้นหา ชื่อ / อีเมล..."
+          class="border border-slate-200 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white w-full sm:w-56"
+          id="searchBox"
+        />
+
+        <button
+          id="btnAddUser"
+          class="px-3 py-2 rounded-lg bg-pink-500 text-white text-xs md:text-sm font-semibold shadow hover:bg-pink-600 flex items-center gap-2"
+        >
+          <i class="fa-solid fa-user-plus"></i> เพิ่มผู้ใช้ / แอดมิน
+        </button>
+
+        <button
+          id="btnBackDashboard"
+          class="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs md:text-sm font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+        >
+          <i class="fa-solid fa-arrow-left"></i> กลับแดชบอร์ด
+        </button>
+
+        <button
+          id="btnLogout"
+          class="btn-cyan px-3 py-2 rounded-lg shadow text-xs md:text-sm font-semibold transition flex items-center gap-1"
+        >
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          ออกจากระบบ
+        </button>
+      </div>
+    </header>
+
+    <!-- STATS -->
+    <section class="px-4 lg:px-8 py-6 grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+      <div class="stat-card rounded-2xl p-5 flex items-center gap-4">
+        <div class="bg-sky-100 text-sky-700 w-12 h-12 rounded-full flex items-center justify-center text-xl">
+          <i class="fa fa-users"></i>
+        </div>
+        <div>
+          <div class="text-lg font-bold" id="countAllUsers">-</div>
+          <div class="text-xs text-slate-500">ผู้ใช้ทั้งหมดในระบบ</div>
+        </div>
+      </div>
+
+      <div class="stat-card rounded-2xl p-5 flex items-center gap-4">
+        <div class="bg-pink-100 text-pink-600 w-12 h-12 rounded-full flex items-center justify-center text-xl">
+          <i class="fa fa-user-shield"></i>
+        </div>
+        <div>
+          <div class="text-lg font-bold" id="countAdmins">-</div>
+          <div class="text-xs text-slate-500">บัญชีที่เป็น Admin</div>
+        </div>
+      </div>
+
+      <div class="stat-card rounded-2xl p-5 flex items-center gap-4">
+        <div class="bg-emerald-100 text-emerald-600 w-12 h-12 rounded-full flex items-center justify-center text-xl">
+          <i class="fa fa-user-doctor"></i>
+        </div>
+        <div>
+          <div class="text-lg font-bold" id="countDoctors">-</div>
+          <div class="text-xs text-slate-500">บัญชีที่เป็น Doctor</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TABLE -->
+    <section class="px-4 lg:px-8 pb-10 flex-1">
+      <div class="bg-white rounded-2xl shadow-sm p-6 sb-table-scroll card-border">
+        <h2 class="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
+          <i class="fa fa-list text-sky-600"></i>
+          รายชื่อผู้ใช้ (แสดงจากคอลเลกชัน
+          <code class="text-pink-500">users</code>)
+        </h2>
+
+        <table class="table sb-table w-full text-sm">
+          <thead>
+            <tr class="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+              <th class="py-2 px-3 text-left">#</th>
+              <th class="py-2 px-3 text-left">UID</th>
+              <th class="py-2 px-3 text-left">ชื่อแสดง (displayName)</th>
+              <th class="py-2 px-3 text-left">อีเมล</th>
+              <th class="py-2 px-3 text-left">บทบาท (role)</th>
+              <th class="py-2 px-3 text-left">สร้างเมื่อ</th>
+              <th class="py-2 px-3 text-right">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="usersTable">
+            <tr data-row="loading">
+              <td colspan="7" class="text-center py-6 text-slate-400">
+                กำลังโหลดข้อมูลผู้ใช้...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p class="mt-4 text-xs text-slate-500 leading-relaxed">
+          * หน้านี้จัดการข้อมูลในคอลเลกชัน <code>users</code> (displayName, email, role) <br>
+          * การสร้างบัญชีผู้ใช้จริง (ใน Authentication) ยังต้องทำผ่าน Firebase Console หรือระบบสมัครสมาชิกของคุณก่อน จากนั้นจึงนำ UID มาบันทึกที่นี่
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: CREATE / EDIT USER -->
+  <div
+    id="userModal"
+    class="fixed inset-0 bg-black/40 flex items-center justify-center z-20 hidden"
+  >
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 border border-slate-100">
+      <h3 id="modalTitle" class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-user-plus text-pink-400"></i>
+        เพิ่มผู้ใช้ / แอดมิน
+      </h3>
+
+      <form id="formUser" class="space-y-4">
+        <div>
+          <label class="block text-sm font-semibold text-slate-800 mb-1">
+            UID (จาก Firebase Auth) <span class="text-pink-500">*</span>
+          </label>
+          <input
+            id="fieldUid"
+            type="text"
+            required
+            class="w-full border border-slate-200 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-slate-50"
+            placeholder="เช่น 1qCu8ZYPNrKMEkFzwtH4"
+          />
+          <p class="text-xs text-slate-400 mt-1">
+            UID ควรตรงกับผู้ใช้ใน Firebase Authentication
+          </p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-slate-800 mb-1">ชื่อแสดง (displayName)</label>
+          <input
+            id="fieldDisplayName"
+            type="text"
+            class="w-full border border-slate-200 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-200 bg-white"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-slate-800 mb-1">อีเมล</label>
+          <input
+            id="fieldEmail"
+            type="email"
+            class="w-full border border-slate-200 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-200 bg-white"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-slate-800 mb-1">บทบาท (role)</label>
+          <select
+            id="fieldRole"
+            class="w-full border border-slate-200 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 bg-white"
+          >
+            <option value="">(ยังไม่กำหนด)</option>
+            <option value="admin">admin</option>
+            <option value="doctor">doctor</option>
+            <option value="user">user</option>
+          </select>
+        </div>
+
+        <p id="modalStatus" class="text-xs text-center text-slate-500 min-h-[1.5rem]"></p>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            id="btnModalCancel"
+            class="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 bg-slate-50 hover:bg-slate-100"
+          >
+            ยกเลิก
+          </button>
+          <button
+            type="submit"
+            id="btnModalSave"
+            class="px-4 py-2 rounded-lg bg-pink-500 text-white text-sm font-semibold shadow hover:bg-pink-600"
+          >
+            บันทึก
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCRIPT -->
+  <script type="module">
+    // ===== Firebase =====
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      query,
+      getDocs,
+      orderBy,
+      doc,
+      setDoc,
+      updateDoc,
+      deleteDoc,
+      serverTimestamp,
+    } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzRiHElsEa_PFOf90mJXzVELsuHwG5_fM",
+      authDomain: "medeasehosting.firebaseapp.com",
+      projectId: "medeasehosting",
+      storageBucket: "medeasehosting.appspot.com"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const usersTable = document.getElementById("usersTable");
+    const countAllUsersEl = document.getElementById("countAllUsers");
+    const countAdminsEl = document.getElementById("countAdmins");
+    const countDoctorsEl = document.getElementById("countDoctors");
+    const adminEmailEl = document.getElementById("adminEmail");
+    const searchBox = document.getElementById("searchBox");
+    const btnLogout = document.getElementById("btnLogout");
+    const btnBackDashboard = document.getElementById("btnBackDashboard");
+    const btnAddUser = document.getElementById("btnAddUser");
+
+    // Modal elements
+    const userModal = document.getElementById("userModal");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalStatus = document.getElementById("modalStatus");
+    const formUser = document.getElementById("formUser");
+    const fieldUid = document.getElementById("fieldUid");
+    const fieldDisplayName = document.getElementById("fieldDisplayName");
+    const fieldEmail = document.getElementById("fieldEmail");
+    const fieldRole = document.getElementById("fieldRole");
+    const btnModalCancel = document.getElementById("btnModalCancel");
+    const btnModalSave = document.getElementById("btnModalSave");
+
+    let editingId = null; // null = create, not null = edit (doc id)
+
+    btnBackDashboard.addEventListener("click", () => {
+      window.location.href = "admin.html";
+    });
+
+    // ===== Logout =====
+    btnLogout.addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+        window.location.href = "login.html";
+      } catch (err) {
+        console.error(err);
+        alert("ออกจากระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      }
+    });
+
+    // ===== Auth Guard + Load Data =====
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "login.html?next=/admin-users.html";
+        return;
+      }
+
+      try {
+        const token = await user.getIdTokenResult(true);
+
+        if (!(token.claims.admin === true || token.claims.role === "admin")) {
+          alert("คุณไม่มีสิทธิ์เข้าถึงหน้านี้");
+          window.location.href = "index.html";
+          return;
+        }
+
+        adminEmailEl.textContent = user.email || "-";
+        await loadUsers();
+      } catch (err) {
+        console.error("auth error", err);
+        alert("ไม่สามารถตรวจสอบสิทธิ์ได้ กรุณาลองใหม่");
+      }
+    });
+
+    function formatDate(v) {
+      try {
+        let d;
+        if (!v) return "-";
+        if (typeof v === "number") {
+          d = new Date(v);
+        } else if (v.toDate) {
+          d = v.toDate();
+        } else {
+          return "-";
+        }
+        return d.toLocaleString("th-TH");
+      } catch {
+        return "-";
+      }
+    }
+
+    // ===== Load Users =====
+    async function loadUsers() {
+      try {
+        const q = query(
+          collection(db, "users"),
+          orderBy("createdAt", "desc")
+        );
+        const snap = await getDocs(q);
+
+        let html = "";
+        let countAll = 0;
+        let countAdmins = 0;
+        let countDoctors = 0;
+
+        snap.forEach((docSnap, i) => {
+          const d = docSnap.data() || {};
+          const id = docSnap.id;
+          countAll++;
+
+          if (d.role === "admin") countAdmins++;
+          if (d.role === "doctor") countDoctors++;
+
+          const badgeClass =
+            d.role === "admin"
+              ? "bg-pink-100 text-pink-600"
+              : d.role === "doctor"
+              ? "bg-emerald-100 text-emerald-600"
+              : "bg-sky-50 text-sky-600";
+
+          html += `
+            <tr class="hover:bg-slate-50 border-b border-slate-100" data-row="item" data-id="${id}">
+              <td class="py-2 px-3">${i + 1}</td>
+              <td class="py-2 px-3 text-xs text-slate-500" data-col="uid">${id}</td>
+              <td class="py-2 px-3" data-col="displayName">${d.displayName || "-"}</td>
+              <td class="py-2 px-3" data-col="email">${d.email || "-"}</td>
+              <td class="py-2 px-3" data-col="role">
+                <span class="px-3 py-1 rounded-full text-xs font-semibold ${badgeClass}">
+                  ${d.role || "-"}
+                </span>
+              </td>
+              <td class="py-2 px-3" data-col="createdAt">${formatDate(d.createdAt)}</td>
+              <td class="py-2 px-3 text-right">
+                <div class="flex justify-end gap-2">
+                  <button
+                    class="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold hover:bg-amber-200"
+                    data-action="edit"
+                  >
+                    <i class="fa-solid fa-pen-to-square mr-1"></i> แก้ไข
+                  </button>
+                  <button
+                    class="px-3 py-1 rounded-full bg-rose-100 text-rose-700 text-xs font-semibold hover:bg-rose-200"
+                    data-action="delete"
+                  >
+                    <i class="fa-solid fa-trash-can mr-1"></i> ลบ
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        });
+
+        if (!html) {
+          usersTable.innerHTML = `
+            <tr data-row="empty">
+              <td colspan="7" class="text-center py-6 text-slate-400">
+                ยังไม่มีข้อมูลผู้ใช้ในคอลเลกชัน users
+              </td>
+            </tr>
+          `;
+        } else {
+          usersTable.innerHTML = html;
+        }
+
+        countAllUsersEl.textContent = countAll;
+        countAdminsEl.textContent = countAdmins;
+        countDoctorsEl.textContent = countDoctors;
+      } catch (err) {
+        console.error("loadUsers error", err);
+        usersTable.innerHTML = `
+          <tr data-row="error">
+            <td colspan="7" class="text-center py-6 text-rose-500">
+              โหลดข้อมูลไม่สำเร็จ กรุณารีเฟรชหน้าอีกครั้ง
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    // ===== Search Filter =====
+    searchBox.addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      const rows = Array.from(
+        usersTable.querySelectorAll('tr[data-row="item"]')
+      );
+      if (!rows.length) return;
+
+      rows.forEach((row) => {
+        const match = Array.from(row.cells).some((td) =>
+          td.textContent.toLowerCase().includes(q)
+        );
+        row.style.display = match ? "" : "none";
+      });
+    });
+
+    // ===== Modal helpers =====
+    function openModalCreate() {
+      editingId = null;
+      modalTitle.textContent = "เพิ่มผู้ใช้ / แอดมินใหม่";
+      fieldUid.value = "";
+      fieldUid.disabled = false;
+      fieldDisplayName.value = "";
+      fieldEmail.value = "";
+      fieldRole.value = "";
+      modalStatus.textContent = "";
+      userModal.classList.remove("hidden");
+    }
+
+    function openModalEdit(row) {
+      editingId = row.dataset.id;
+      modalTitle.textContent = "แก้ไขข้อมูลผู้ใช้ / แอดมิน";
+      fieldUid.value = editingId;
+      fieldUid.disabled = true;
+
+      const nameText = row.querySelector('[data-col="displayName"]').textContent.trim();
+      fieldDisplayName.value = nameText === "-" ? "" : nameText;
+
+      const emailText = row.querySelector('[data-col="email"]').textContent.trim();
+      fieldEmail.value = emailText === "-" ? "" : emailText;
+
+      const roleSpan = row.querySelector('[data-col="role"] span');
+      const roleText = roleSpan ? roleSpan.textContent.trim() : "";
+      fieldRole.value = roleText === "-" ? "" : roleText;
+
+      modalStatus.textContent = "";
+      userModal.classList.remove("hidden");
+    }
+
+    function closeModal() {
+      userModal.classList.add("hidden");
+    }
+
+    btnAddUser.addEventListener("click", openModalCreate);
+    btnModalCancel.addEventListener("click", closeModal);
+
+    // ===== Handle modal submit (Create / Update) =====
+    formUser.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      modalStatus.textContent = "";
+      btnModalSave.disabled = true;
+      btnModalSave.textContent = "กำลังบันทึก...";
+
+      const uid = fieldUid.value.trim();
+      const displayName = fieldDisplayName.value.trim();
+      const email = fieldEmail.value.trim();
+      const role = fieldRole.value.trim();
+
+      if (!uid) {
+        modalStatus.textContent = "กรุณาระบุ UID";
+        btnModalSave.disabled = false;
+        btnModalSave.textContent = "บันทึก";
+        return;
+      }
+
+      try {
+        if (!editingId) {
+          // CREATE / MERGE
+          await setDoc(
+            doc(db, "users", uid),
+            {
+              displayName: displayName || null,
+              email: email || null,
+              role: role || null,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+          alert("เพิ่ม/อัปเดตผู้ใช้สำเร็จ");
+        } else {
+          // UPDATE
+          await updateDoc(doc(db, "users", editingId), {
+            displayName: displayName || null,
+            email: email || null,
+            role: role || null,
+            updatedAt: serverTimestamp(),
+          });
+          alert("แก้ไขข้อมูลผู้ใช้สำเร็จ");
+        }
+
+        closeModal();
+        await loadUsers();
+      } catch (err) {
+        console.error("save user error", err);
+        modalStatus.textContent = "บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
+      } finally {
+        btnModalSave.disabled = false;
+        btnModalSave.textContent = "บันทึก";
+      }
+    });
+
+    // ===== Table actions (Edit/Delete) =====
+    usersTable.addEventListener("click", async (e) => {
+      const btnEdit = e.target.closest("[data-action='edit']");
+      const btnDelete = e.target.closest("[data-action='delete']");
+
+      if (btnEdit) {
+        const row = btnEdit.closest("tr[data-row='item']");
+        if (row) openModalEdit(row);
+        return;
+      }
+
+      if (btnDelete) {
+        const row = btnDelete.closest("tr[data-row='item']");
+        if (!row) return;
+        const id = row.dataset.id;
+        if (!id) return;
+
+        const confirmDel = confirm(
+          "ต้องการลบข้อมูลผู้ใช้นี้ออกจากคอลเลกชัน users หรือไม่?\n(การลบนี้ไม่ลบบัญชีใน Authentication)"
+        );
+        if (!confirmDel) return;
+
+        try {
+          await deleteDoc(doc(db, "users", id));
+          alert("ลบผู้ใช้สำเร็จ");
+          await loadUsers();
+        } catch (err) {
+          console.error("delete user error", err);
+          alert("ลบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+        }
+      }
+    });
+  </script>
+</body>
+</html>

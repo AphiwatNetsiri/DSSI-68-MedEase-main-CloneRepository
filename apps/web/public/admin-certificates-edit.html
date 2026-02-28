@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>แก้ไขคำขอใบรับรองแพทย์ - MedEase Admin</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --primary: #3b82f6;   /* blue-500/600 */
+      --secondary: #8b5cf6; /* violet-500 */
+      --bg-soft: #f8fafc;   /* slate-50 */
+      --text-main: #0f172a; /* slate-900 */
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Sarabun', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: var(--bg-soft);
+      color: var(--text-main);
+      min-height: 100vh;
+    }
+
+    /* Global focus state */
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .sidebar {
+      background: #ffffff;
+      border-right: 1px solid #e2e8f0;
+    }
+
+    .sb-title {
+      letter-spacing: 0.04em;
+    }
+
+    .sidebar a {
+      transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+    }
+
+    .sidebar a:hover {
+      transform: translateX(2px);
+    }
+
+    .card-border {
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+    }
+
+    .btn-cyan {
+      background: #2563eb;
+      color: #ffffff;
+    }
+    .btn-cyan:hover {
+      background: #1d4ed8;
+      color: #ffffff;
+    }
+
+    .btn-pink {
+      background: #ec4899;
+      color: #ffffff;
+    }
+    .btn-pink:hover {
+      background: #db2777;
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <aside class="sidebar fixed top-0 left-0 h-full w-56 flex flex-col text-slate-700 shadow-sm z-10">
+    <div class="p-6 border-b border-slate-100">
+      <span class="sb-title text-2xl font-bold tracking-wide flex items-center gap-2 text-slate-900">
+        <i class="fa-solid fa-stethoscope text-pink-400"></i> MedEase
+      </span>
+      <div class="mt-2 text-xs text-slate-500">Admin Dashboard</div>
+    </div>
+
+    <nav class="flex-1 p-4 space-y-1 text-sm">
+      <a href="https://medeasehosting.web.app/admin.html"
+         class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900">
+        <i class="fa fa-gauge-high mr-2"></i>แดชบอร์ดหลัก
+      </a>
+      <a href="https://medeasehosting.web.app/admin-certificates.html"
+         class="block px-4 py-2 rounded-lg bg-slate-100 text-slate-900 font-semibold">
+        <i class="fa fa-table mr-2"></i>ผู้ขอใบรับรอง
+      </a>
+      <a href="https://medeasehosting.web.app/admin-users.html"
+         class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900">
+        <i class="fa fa-user-shield mr-2"></i>แอดมิน
+      </a>
+    </nav>
+
+    <div class="mt-auto mb-6 px-6 text-xs text-slate-400">
+      © 2025 MedEase
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="ml-56 min-h-screen flex flex-col">
+    <!-- TOP BAR -->
+    <header class="bg-white/90 backdrop-blur shadow-sm flex flex-wrap gap-4 items-center justify-between px-6 lg:px-8 py-4 card-border mt-4 mx-4">
+      <div>
+        <p class="text-xs font-semibold text-sky-700 flex items-center gap-2">
+          <i class="fa-solid fa-file-pen text-pink-400"></i>
+          MedEase Admin · แก้ไขคำขอใบรับรอง
+        </p>
+        <h1 class="text-lg md:text-xl font-bold text-slate-900 mt-1" id="pageTitle">
+          แก้ไขคำขอใบรับรองแพทย์
+        </h1>
+      </div>
+
+      <span class="text-xs md:text-sm text-slate-600">
+        เข้าสู่ระบบในชื่อ:
+        <span id="adminEmail" class="font-semibold text-slate-900">-</span>
+      </span>
+    </header>
+
+    <!-- FORM -->
+    <section class="px-4 lg:px-8 py-6 w-full max-w-3xl mx-auto mb-8">
+      <form id="editForm" class="bg-white rounded-2xl shadow-sm p-6 lg:p-7 card-border space-y-4">
+        <div id="formStatus" class="text-sm text-slate-400 mb-1">
+          กำลังโหลดข้อมูล...
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label class="text-sm block">
+            ชื่อ-นามสกุล
+            <input
+              type="text"
+              name="fullname"
+              class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-slate-50"
+              required
+            />
+          </label>
+
+          <label class="text-sm block">
+            LINE Name
+            <input
+              type="text"
+              name="displayName"
+              class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-slate-50"
+            />
+          </label>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label class="text-sm block">
+            เบอร์โทร
+            <input
+              type="tel"
+              name="phone"
+              class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-slate-50"
+            />
+          </label>
+
+          <label class="text-sm block">
+            สถานะ
+            <select
+              name="status"
+              class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-slate-50"
+            >
+              <option value="pending">รออนุมัติ</option>
+              <option value="approved">ส่งใบรับรองแล้ว</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="text-sm block">
+          อาการ / รายละเอียด
+          <textarea
+            name="symptoms"
+            rows="4"
+            class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-slate-50"
+          ></textarea>
+        </label>
+
+        <div class="flex flex-wrap gap-3 pt-4">
+          <a
+            id="btnBackList"
+            href="admin-certificates.html"
+            class="px-4 py-2 rounded-lg btn-cyan text-sm font-semibold shadow-sm flex items-center gap-2"
+          >
+            <i class="fa-solid fa-arrow-left"></i>
+            กลับหน้ารายการ
+          </a>
+          <a
+            id="btnBackView"
+            href="#"
+            class="px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+          >
+            <i class="fa-solid fa-eye"></i>
+            ดูหน้ารายละเอียด
+          </a>
+          <button
+            type="submit"
+            class="px-4 py-2 rounded-lg btn-pink text-sm font-semibold shadow-sm flex items-center gap-2"
+          >
+            <i class="fa-solid fa-floppy-disk"></i>
+            บันทึกการเปลี่ยนแปลง
+          </button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <!-- SCRIPT -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      updateDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzRiHElsEa_PFOf90mJXzVELsuHwG5_fM",
+      authDomain: "medeasehosting.firebaseapp.com",
+      projectId: "medeasehosting",
+      storageBucket: "medeasehosting.appspot.com"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const params = new URLSearchParams(location.search);
+    const docId = params.get("id");
+
+    const adminEmailEl = document.getElementById("adminEmail");
+    const editForm     = document.getElementById("editForm");
+    const formStatus   = document.getElementById("formStatus");
+    const pageTitle    = document.getElementById("pageTitle");
+    const btnBackView  = document.getElementById("btnBackView");
+
+    if (!docId) {
+      formStatus.textContent = "ไม่พบรหัสคำขอ (id) ใน URL";
+      editForm.querySelectorAll("input, textarea, select, button").forEach(el => {
+        if (el.tagName === "BUTTON") el.disabled = true;
+        else el.readOnly = true;
+      });
+    } else {
+      btnBackView.href = `admin-certificates-view.html?id=${encodeURIComponent(docId)}`;
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        location.href = "login.html?next=" + encodeURIComponent(location.pathname + location.search);
+        return;
+      }
+
+      try {
+        const token = await user.getIdTokenResult();
+        if (!token.claims.admin) {
+          alert("คุณไม่มีสิทธิ์เข้าถึงหน้านี้");
+          await signOut(auth);
+          location.href = "index.html";
+          return;
+        }
+
+        adminEmailEl.textContent = user.email || "-";
+        if (docId) {
+          await loadData(docId);
+        }
+      } catch (err) {
+        console.error(err);
+        alert("ไม่สามารถตรวจสอบสิทธิ์ได้ กรุณาลองใหม่");
+      }
+    });
+
+    async function loadData(id) {
+      try {
+        formStatus.textContent = "กำลังโหลดข้อมูล...";
+        const ref = doc(db, "certificates_requests", id);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+          formStatus.textContent = "ไม่พบข้อมูลคำขอในระบบ";
+          return;
+        }
+
+        const d = snap.data();
+        pageTitle.textContent = `แก้ไขคำขอใบรับรอง · ${d.fullname || "-"}`;
+
+        editForm.fullname.value    = d.fullname || "";
+        editForm.displayName.value = d.displayName || "";
+        editForm.phone.value       = d.phone || "";
+        editForm.symptoms.value    = d.symptoms || "";
+        editForm.status.value      = d.status || "pending";
+
+        formStatus.textContent = "แก้ไขข้อมูล แล้วกดบันทึกการเปลี่ยนแปลง";
+      } catch (err) {
+        console.error(err);
+        formStatus.textContent = "โหลดข้อมูลไม่สำเร็จ กรุณารีเฟรชหน้า";
+      }
+    }
+
+    editForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!docId) return;
+
+      const payload = {
+        fullname:    editForm.fullname.value.trim(),
+        displayName: editForm.displayName.value.trim(),
+        phone:       editForm.phone.value.trim(),
+        symptoms:    editForm.symptoms.value.trim(),
+        status:      editForm.status.value,
+        updatedAt:   serverTimestamp(),
+      };
+
+      if (!payload.fullname) {
+        alert("กรุณากรอกชื่อ-นามสกุล");
+        return;
+      }
+
+      try {
+        formStatus.textContent = "กำลังบันทึกข้อมูล...";
+        const ref = doc(db, "certificates_requests", docId);
+        await updateDoc(ref, payload);
+        formStatus.textContent = "บันทึกสำเร็จ ✅";
+        setTimeout(() => {
+          location.href = `admin-certificates-view.html?id=${encodeURIComponent(docId)}`;
+        }, 800);
+      } catch (err) {
+        console.error(err);
+        formStatus.textContent = "บันทึกไม่สำเร็จ กรุณาลองใหม่";
+        alert("บันทึกข้อมูลไม่สำเร็จ");
+      }
+    });
+  </script>
+</body>
+</html>

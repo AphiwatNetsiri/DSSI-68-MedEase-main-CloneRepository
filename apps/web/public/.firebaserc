@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "default": "medeasehosting",
+    "firebase deploy": "medeasehosting",
+    "production": "medeasehosting"
+  },
+  "targets": {},
+  "etags": {}
+}

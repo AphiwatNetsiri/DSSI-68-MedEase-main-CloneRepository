@@ -1,0 +1,1105 @@
+<!-- file: public/admin-doctor-schedules.html -->
+<!-- patched: CRUD schedules (edit/delete/notify), reuse modal, add status + actions, keep existing style/pattern -->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>จัดการตารางเวรแพทย์ - MedEase Admin</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- FontAwesome -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"
+  />
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Sarabun', 'Segoe UI', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      min-height: 100vh;
+    }
+    .sidebar {
+      background: #ffffff;
+      border-right: 1px solid #e2e8f0;
+    }
+  </style>
+
+  <!-- Firebase Auth + Firestore สำหรับตารางเวรแพทย์ -->
+  <script type="module">
+    import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut,
+    } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      query,
+      where,
+      orderBy,
+      Timestamp,
+      addDoc,
+      serverTimestamp,
+      doc,
+      updateDoc,
+      deleteDoc,
+      getDoc,
+    } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzRiHElsEa_PFOf90mJXzVELsuHwG5_fM",
+      authDomain: "medeasehosting.firebaseapp.com",
+      projectId: "medeasehosting",
+    };
+
+    // ป้องกัน init ซ้ำ
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // ==============================
+    // ✅ 1) getApiBase() + notifyNow()
+    // ==============================
+    function getApiBase() {
+      // ✅ 1) Allow override (กัน ngrok เปลี่ยนบ่อย)
+      const override = localStorage.getItem("MEDEASE_API_BASE");
+      if (override) return override.replace(/\/+$/, "");
+
+      // ✅ 2) Dev local
+      const isLocal =
+        location.hostname === "localhost" ||
+        location.hostname === "127.0.0.1";
+
+      if (isLocal) return "http://localhost:3000";
+
+      // ✅ 3) Production hosting -> ใช้ ngrok/โดเมน backend ของคุณ (ต้องเป็น https)
+      return "https://semimechanical-subovoid-hue.ngrok-free.dev";
+    }
+
+    // ✅ ส่งแจ้งเตือนเวร “ทันที”
+    async function notifyNow(scheduleId) {
+      const user = auth.currentUser;
+      if (!user) throw new Error("not logged in");
+
+      const token = await user.getIdToken(true);
+
+      const API_BASE = getApiBase();
+      console.log("[notifyNow] API_BASE =", API_BASE);
+
+      const base = API_BASE.replace(/\/+$/, "");
+      const res = await fetch(`${base}/admin/doctor-schedules/notify-now`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ scheduleId }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.ok === false) {
+        const msg = data?.error || `notify-now failed (${res.status})`;
+        throw new Error(msg);
+      }
+      return data;
+    }
+
+    // ✅ สำคัญ: รอ DOM มาก่อน แล้วค่อยจับ element + bind event
+    window.addEventListener("DOMContentLoaded", () => {
+      // DOM refs
+      const adminEmailEl   = document.getElementById("adminEmail");
+      const btnLogout      = document.getElementById("btnLogout");
+
+      const doctorSelect   = document.getElementById("doctorSelect");
+      const startDateInput = document.getElementById("startDate");
+      const endDateInput   = document.getElementById("endDate");
+      const btnThisWeek    = document.getElementById("btnThisWeek");
+      const btnNewShift    = document.getElementById("btnNewShift");
+      const tableBody      = document.getElementById("scheduleTableBody");
+
+      // modal
+      const newShiftModal       = document.getElementById("newShiftModal");
+      const modalTitleEl        = document.getElementById("shiftModalTitle");
+      const shiftDoctorNameEl   = document.getElementById("shiftDoctorName");
+      const shiftDateInput      = document.getElementById("shiftDate");
+      const shiftStartTimeInput = document.getElementById("shiftStartTime");
+      const shiftEndTimeInput   = document.getElementById("shiftEndTime");
+      const shiftTypeInput      = document.getElementById("shiftTypeInput");
+      const shiftLocationInput  = document.getElementById("shiftLocationInput");
+      const shiftNoteInput      = document.getElementById("shiftNoteInput");
+      const shiftStatusInput    = document.getElementById("shiftStatusInput");
+      const shiftNotifyAfterSave= document.getElementById("shiftNotifyAfterSave");
+
+      const newShiftForm        = document.getElementById("newShiftForm");
+      const btnCloseShiftModal  = document.getElementById("btnCloseShiftModal");
+      const btnCancelShift      = document.getElementById("btnCancelShift");
+      const btnSaveShift        = document.getElementById("btnSaveShift"); // UX: disable/enable ตอนส่ง
+
+      // state: modal mode
+      let modalMode = "create"; // "create" | "edit"
+      let editingScheduleId = null;
+
+      // ==================================================
+      // ✅ 3) UX: เพิ่ม toggle “ส่งแจ้งเตือนทันที”
+      //    - ค่า default = เปิด (true)
+      //    - จำค่าลง localStorage ได้
+      // ==================================================
+      const AUTO_NOTIFY_KEY = "MEDEASE_AUTO_NOTIFY_NOW";
+      let autoNotifyEnabled =
+        (localStorage.getItem(AUTO_NOTIFY_KEY) ?? "1") === "1";
+
+      // สร้าง UI แบบไม่รก: ใส่ใต้ปุ่ม "+ เพิ่มกะเวร" ในแถบ Filters
+      // (สร้างด้วย JS เพื่อไม่ต้องแก้ HTML ส่วนอื่นเยอะ)
+      const filtersRightBox = btnNewShift?.parentElement;
+      const autoNotifyWrap = document.createElement("label");
+      autoNotifyWrap.className =
+        "flex items-center gap-2 px-3 py-2 rounded-lg border bg-white text-xs text-slate-700 select-none";
+      autoNotifyWrap.title = "เปิดไว้จะส่งแจ้งเตือนทันทีหลังบันทึกกะเวร";
+      autoNotifyWrap.innerHTML = `
+        <input id="autoNotifyToggle" type="checkbox" class="h-4 w-4 accent-sky-600" />
+        <span>ส่งแจ้งเตือนทันที</span>
+      `;
+      if (filtersRightBox) {
+        filtersRightBox.appendChild(autoNotifyWrap);
+      }
+      const autoNotifyToggle = document.getElementById("autoNotifyToggle");
+      if (autoNotifyToggle) {
+        autoNotifyToggle.checked = autoNotifyEnabled;
+        autoNotifyToggle.addEventListener("change", () => {
+          autoNotifyEnabled = autoNotifyToggle.checked;
+          localStorage.setItem(AUTO_NOTIFY_KEY, autoNotifyEnabled ? "1" : "0");
+        });
+      }
+
+      // เก็บข้อมูลหมอไว้ใช้ตอนสร้างกะเวร
+      const doctorsMap = {}; // { doctorUid: { displayName, email, ... } }
+
+      // ===== Helpers =====
+      function pad2(n) { return n.toString().padStart(2, "0"); }
+
+      function toThaiDate(d) {
+        return d.toLocaleDateString("th-TH", {
+          weekday: "short",
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+      }
+
+      function escapeHtml(str) {
+        return String(str ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function parseDateInput(value) {
+        if (!value) return null;
+        const [year, month, day] = value.split("-").map(Number);
+        return new Date(year, month - 1, day);
+      }
+
+      function getRangeTimestamps() {
+        const startDate = parseDateInput(startDateInput.value);
+        const endDate   = parseDateInput(endDateInput.value);
+
+        let startTs = null;
+        let endTs   = null;
+
+        if (startDate) {
+          startDate.setHours(0, 0, 0, 0);
+          startTs = Timestamp.fromDate(startDate);
+        }
+        if (endDate) {
+          endDate.setHours(23, 59, 59, 999);
+          endTs = Timestamp.fromDate(endDate);
+        }
+        return { startTs, endTs };
+      }
+
+      function setThisWeekRange() {
+        const today = new Date();
+        const day = today.getDay(); // 0 = Sun, 1 = Mon, ...
+        const diffToMonday = (day === 0 ? -6 : 1 - day);
+        const monday = new Date(today);
+        monday.setDate(today.getDate() + diffToMonday);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+
+        startDateInput.value = monday.toISOString().slice(0, 10);
+        endDateInput.value   = sunday.toISOString().slice(0, 10);
+      }
+
+      function openModal() {
+        if (!newShiftModal) return;
+        newShiftModal.classList.remove("hidden");
+        newShiftModal.classList.add("flex");
+      }
+      function closeModal() {
+        if (!newShiftModal) return;
+        newShiftModal.classList.add("hidden");
+        newShiftModal.classList.remove("flex");
+      }
+
+      function setModalMode(mode) {
+        modalMode = mode;
+        if (mode === "edit") {
+          if (modalTitleEl) modalTitleEl.textContent = "แก้ไขกะเวรแพทย์";
+          if (btnSaveShift) btnSaveShift.textContent = "บันทึกการแก้ไข";
+        } else {
+          if (modalTitleEl) modalTitleEl.textContent = "เพิ่มกะเวรแพทย์";
+          if (btnSaveShift) btnSaveShift.textContent = "บันทึกกะเวร";
+        }
+      }
+
+      function shiftTypeLabel(v) {
+        switch (v) {
+          case "morning": return "เช้า";
+          case "afternoon": return "บ่าย";
+          case "night": return "ดึก";
+          case "oncall": return "On call";
+          case "other": return "อื่น ๆ";
+          default: return v || "-";
+        }
+      }
+
+      function statusBadge(status) {
+        const s = (status || "pending").toLowerCase();
+        if (s === "confirmed") {
+          return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-200">confirmed</span>`;
+        }
+        if (s === "cancelled" || s === "canceled") {
+          return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-rose-50 text-rose-700 border border-rose-200">cancelled</span>`;
+        }
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-slate-50 text-slate-700 border border-slate-200">${escapeHtml(s)}</span>`;
+      }
+
+      function buildDateTime(dateStr, timeStr) {
+        const [y, m, d] = String(dateStr).split("-").map(Number);
+        const [hh, mm]  = String(timeStr).split(":").map(Number);
+        return new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, 0, 0);
+      }
+
+      function validateShiftInput({ doctorUid, dateStr, startTime, endTime }) {
+        if (!doctorUid) return "กรุณาเลือกแพทย์ก่อน";
+        if (!dateStr || !startTime || !endTime) return "กรุณากรอกวันที่และเวลาให้ครบ";
+        const startAtDate = buildDateTime(dateStr, startTime);
+        const endAtDate   = buildDateTime(dateStr, endTime);
+        if (endAtDate <= startAtDate) return "เวลาสิ้นสุดต้องมากกว่าเวลาเริ่ม";
+        return null;
+      }
+
+      // ===== โหลดรายชื่อแพทย์ =====
+      async function loadDoctors() {
+        doctorSelect.innerHTML = `<option value="">-- เลือกแพทย์ --</option>`;
+        Object.keys(doctorsMap).forEach(k => delete doctorsMap[k]);
+
+        try {
+          const snap = await getDocs(collection(db, "doctors"));
+          let firstDoctorId = null;
+
+          snap.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data.status && data.status !== "active") return;
+
+            doctorsMap[docSnap.id] = data;
+
+            const option = document.createElement("option");
+            option.value = docSnap.id;
+            option.textContent = data.displayName || data.email || docSnap.id;
+            doctorSelect.appendChild(option);
+
+            if (!firstDoctorId) firstDoctorId = docSnap.id;
+          });
+
+          if (firstDoctorId) doctorSelect.value = firstDoctorId;
+        } catch (err) {
+          console.error("โหลดรายชื่อแพทย์ไม่สำเร็จ:", err);
+          alert("โหลดรายชื่อแพทย์ไม่สำเร็จ");
+        }
+      }
+
+      // ===== โหลดตารางเวร =====
+      async function loadSchedules() {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="7" class="px-3 py-4 text-center text-sm text-slate-500">
+              กำลังโหลดตารางเวร...
+            </td>
+          </tr>
+        `;
+
+        try {
+          const conditions = [];
+          const { startTs, endTs } = getRangeTimestamps();
+
+          const selectedDoctorUid = doctorSelect.value;
+
+          if (selectedDoctorUid) conditions.push(where("doctorUid", "==", selectedDoctorUid));
+          if (startTs) conditions.push(where("startAt", ">=", startTs));
+          if (endTs)   conditions.push(where("startAt", "<=", endTs));
+
+          conditions.push(orderBy("startAt", "asc"));
+
+          const qRef = query(collection(db, "doctor_schedules"), ...conditions);
+          const snap = await getDocs(qRef);
+
+          if (snap.empty) {
+            tableBody.innerHTML = `
+              <tr>
+                <td colspan="7" class="px-3 py-4 text-center text-sm text-slate-500">
+                  ไม่พบข้อมูลตารางเวรตามเงื่อนไขที่เลือก
+                </td>
+              </tr>
+            `;
+            return;
+          }
+
+          const rows = [];
+
+          snap.forEach((docSnap) => {
+            const id = docSnap.id;
+            const data = docSnap.data();
+
+            const startAt = data.startAt?.toDate ? data.startAt.toDate() : null;
+            const endAt   = data.endAt?.toDate ? data.endAt.toDate() : null;
+
+            const dateText = startAt ? toThaiDate(startAt) : (data.date || "-");
+            const timeText =
+              (data.startTime && data.endTime)
+                ? `${escapeHtml(data.startTime)}–${escapeHtml(data.endTime)}`
+                : (startAt && endAt)
+                  ? `${pad2(startAt.getHours())}:${pad2(startAt.getMinutes())}–${pad2(endAt.getHours())}:${pad2(endAt.getMinutes())}`
+                  : "-";
+
+            const doctorName = escapeHtml(data.doctorDisplayName || "-");
+            const shiftType  = escapeHtml(shiftTypeLabel(data.shiftType));
+            const location   = escapeHtml(data.location || "-");
+            const note       = escapeHtml(data.note || "-");
+            const statusHtml = statusBadge(data.status);
+
+            rows.push(`
+              <tr>
+                <td class="px-3 py-2 align-top whitespace-nowrap">
+                  <div class="font-medium text-slate-900">${escapeHtml(dateText)}</div>
+                  <div class="mt-1">${statusHtml}</div>
+                </td>
+                <td class="px-3 py-2 align-top whitespace-nowrap">${timeText}</td>
+                <td class="px-3 py-2 align-top">${doctorName}</td>
+                <td class="px-3 py-2 align-top">${shiftType}</td>
+                <td class="px-3 py-2 align-top">${location}</td>
+                <td class="px-3 py-2 align-top text-slate-600">${note}</td>
+                <td class="px-3 py-2 align-top text-right">
+                  <div class="inline-flex flex-wrap gap-1 justify-end">
+                    <button
+                      type="button"
+                      class="js-edit px-2 py-1 rounded text-xs bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100"
+                      data-id="${escapeHtml(id)}"
+                      title="แก้ไข"
+                    >
+                      แก้ไข
+                    </button>
+                    <button
+                      type="button"
+                      class="js-delete px-2 py-1 rounded text-xs bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100"
+                      data-id="${escapeHtml(id)}"
+                      title="ลบ"
+                    >
+                      ลบ
+                    </button>
+                    <button
+                      type="button"
+                      class="js-notify px-2 py-1 rounded text-xs bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100"
+                      data-id="${escapeHtml(id)}"
+                      title="แจ้งเตือนทันที"
+                    >
+                      แจ้งเตือน
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `);
+          });
+
+          tableBody.innerHTML = rows.join("");
+        } catch (err) {
+          console.error("โหลดตารางเวรไม่สำเร็จ:", err);
+          tableBody.innerHTML = `
+            <tr>
+              <td colspan="7" class="px-3 py-4 text-center text-sm text-rose-500">
+                โหลดตารางเวรไม่สำเร็จ กรุณาลองใหม่อีกครั้ง
+              </td>
+            </tr>
+          `;
+        }
+      }
+
+      // ===== เปิด modal เพื่อ Create =====
+      function openCreateModal() {
+        const doctorUid = doctorSelect.value;
+        if (!doctorUid) {
+          alert("กรุณาเลือกแพทย์ก่อน");
+          return;
+        }
+        const doctorData = doctorsMap[doctorUid] || {};
+        const doctorName =
+          doctorData.displayName ||
+          (doctorSelect.options[doctorSelect.selectedIndex]?.textContent || doctorUid);
+
+        editingScheduleId = null;
+        setModalMode("create");
+
+        shiftDoctorNameEl.textContent = doctorName;
+
+        if (startDateInput.value) {
+          shiftDateInput.value = startDateInput.value;
+        } else {
+          shiftDateInput.value = new Date().toISOString().slice(0, 10);
+        }
+
+        shiftStartTimeInput.value = "09:00";
+        shiftEndTimeInput.value   = "12:00";
+
+        shiftTypeInput.value = "morning";
+        shiftLocationInput.value = "";
+        shiftNoteInput.value = "";
+        shiftStatusInput.value = "confirmed";
+
+        // default ตาม toggle บนหน้า
+        if (shiftNotifyAfterSave) shiftNotifyAfterSave.checked = autoNotifyEnabled;
+
+        openModal();
+      }
+
+      // ===== เปิด modal เพื่อ Edit =====
+      async function openEditModal(scheduleId) {
+        try {
+          const ref = doc(db, "doctor_schedules", scheduleId);
+          const snap = await getDoc(ref);
+          if (!snap.exists()) {
+            alert("ไม่พบข้อมูลกะเวรนี้แล้ว");
+            await loadSchedules();
+            return;
+          }
+
+          const data = snap.data();
+          const doctorUid = data.doctorUid || doctorSelect.value || "";
+          if (doctorUid) doctorSelect.value = doctorUid;
+
+          const doctorData = doctorsMap[doctorUid] || {};
+          const doctorName =
+            data.doctorDisplayName ||
+            doctorData.displayName ||
+            (doctorSelect.options[doctorSelect.selectedIndex]?.textContent || doctorUid || "-");
+
+          editingScheduleId = scheduleId;
+          setModalMode("edit");
+
+          shiftDoctorNameEl.textContent = doctorName;
+
+          // เติมค่าเดิม
+          shiftDateInput.value      = data.date || "";
+          shiftStartTimeInput.value = data.startTime || "";
+          shiftEndTimeInput.value   = data.endTime || "";
+          shiftTypeInput.value      = data.shiftType || "other";
+          shiftLocationInput.value  = data.location || "";
+          shiftNoteInput.value      = data.note || "";
+          shiftStatusInput.value    = data.status || "confirmed";
+
+          // default ตาม toggle บนหน้า (และให้ user เปลี่ยนได้)
+          if (shiftNotifyAfterSave) shiftNotifyAfterSave.checked = autoNotifyEnabled;
+
+          openModal();
+        } catch (err) {
+          console.error("openEditModal failed:", err);
+          alert("เปิดหน้าต่างแก้ไขไม่สำเร็จ กรุณาลองใหม่");
+        }
+      }
+
+      // ===== Save (Create / Update) =====
+      async function saveShiftFromModal() {
+        const doctorUid = doctorSelect.value;
+        const doctorData = doctorsMap[doctorUid] || {};
+        const doctorName =
+          doctorData.displayName ||
+          (doctorSelect.options[doctorSelect.selectedIndex]?.textContent || doctorUid);
+
+        const dateStr   = shiftDateInput.value;       // yyyy-mm-dd
+        const startTime = shiftStartTimeInput.value;  // HH:MM
+        const endTime   = shiftEndTimeInput.value;    // HH:MM
+        const shiftType = shiftTypeInput.value || "other";
+        const location  = shiftLocationInput.value || "";
+        const note      = shiftNoteInput.value || "";
+        const status    = shiftStatusInput.value || "confirmed";
+
+        const errMsg = validateShiftInput({ doctorUid, dateStr, startTime, endTime });
+        if (errMsg) {
+          alert(errMsg);
+          return;
+        }
+
+        const startAtDate = buildDateTime(dateStr, startTime);
+        const endAtDate   = buildDateTime(dateStr, endTime);
+        const startAtTs   = Timestamp.fromDate(startAtDate);
+        const endAtTs     = Timestamp.fromDate(endAtDate);
+
+        const shouldNotify = !!shiftNotifyAfterSave?.checked;
+
+        try {
+          // UX: lock ปุ่มระหว่างทำงาน
+          if (btnSaveShift) {
+            btnSaveShift.disabled = true;
+            btnSaveShift.classList.add("opacity-70", "cursor-not-allowed");
+            btnSaveShift.textContent = (modalMode === "edit") ? "กำลังบันทึก..." : "กำลังบันทึก...";
+          }
+
+          const currentUser = auth.currentUser;
+          const uid = currentUser ? currentUser.uid : null;
+
+          if (modalMode === "create") {
+            const docRef = await addDoc(collection(db, "doctor_schedules"), {
+              doctorUid: doctorUid,
+              doctorDisplayName: doctorName,
+              date: dateStr,
+              startTime: startTime,
+              endTime: endTime,
+              startAt: startAtTs,
+              endAt: endAtTs,
+              shiftType: shiftType,
+              location: location,
+              note: note,
+              status: status,
+              createdBy: uid,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+
+              // ====== defaults ======
+              remind1hSent: false,
+              summarySent: false,
+              manualNotifyAt: null,
+              manualNotifyBy: null,
+            });
+
+            // ✅ ส่งแจ้งเตือนทันทีหลังบันทึก (ถ้าเปิด)
+            if (shouldNotify) {
+              try {
+                await notifyNow(docRef.id);
+                console.log("[notify-now] ok", docRef.id);
+              } catch (err) {
+                console.warn("[notify-now] failed", err?.message || err);
+                alert("บันทึกกะเวรแล้ว ✅ แต่ส่งแจ้งเตือนทันทีไม่สำเร็จ ❌\n\n" + (err?.message || err));
+              }
+            }
+
+            // auto adjust range
+            if (!startDateInput.value || dateStr < startDateInput.value) startDateInput.value = dateStr;
+            if (!endDateInput.value || dateStr > endDateInput.value) endDateInput.value = dateStr;
+
+            closeModal();
+            newShiftForm.reset();
+            await loadSchedules();
+            alert("บันทึกกะเวรสำเร็จ");
+            return;
+          }
+
+          // ===== update =====
+          if (!editingScheduleId) {
+            alert("ไม่พบรหัสรายการที่กำลังแก้ไข");
+            return;
+          }
+
+          const ref = doc(db, "doctor_schedules", editingScheduleId);
+          await updateDoc(ref, {
+            doctorUid: doctorUid,
+            doctorDisplayName: doctorName,
+            date: dateStr,
+            startTime: startTime,
+            endTime: endTime,
+            startAt: startAtTs,
+            endAt: endAtTs,
+            shiftType: shiftType,
+            location: location,
+            note: note,
+            status: status,
+            updatedAt: serverTimestamp(),
+          });
+
+          // (optional) ส่งแจ้งเตือนหลังแก้ไข
+          if (shouldNotify) {
+            try {
+              await notifyNow(editingScheduleId);
+              console.log("[notify-now] ok(edit)", editingScheduleId);
+            } catch (err) {
+              console.warn("[notify-now] failed(edit)", err?.message || err);
+              alert("อัปเดตกะเวรแล้ว ✅ แต่ส่งแจ้งเตือนทันทีไม่สำเร็จ ❌\n\n" + (err?.message || err));
+            }
+          }
+
+          closeModal();
+          editingScheduleId = null;
+          newShiftForm.reset();
+
+          await loadSchedules();
+          alert("อัปเดตกะเวรสำเร็จ");
+        } catch (err) {
+          console.error("saveShiftFromModal failed:", err);
+          alert("บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+        } finally {
+          // UX: unlock ปุ่ม
+          if (btnSaveShift) {
+            btnSaveShift.disabled = false;
+            btnSaveShift.classList.remove("opacity-70", "cursor-not-allowed");
+            btnSaveShift.textContent = (modalMode === "edit") ? "บันทึกการแก้ไข" : "บันทึกกะเวร";
+          }
+        }
+      }
+
+      // ===== Delete =====
+      async function deleteSchedule(scheduleId) {
+        const ok = confirm("ยืนยันลบตารางเวรนี้หรือไม่");
+        if (!ok) return;
+
+        try {
+          await deleteDoc(doc(db, "doctor_schedules", scheduleId));
+          await loadSchedules();
+          alert("ลบตารางเวรแล้ว");
+        } catch (err) {
+          console.error("deleteSchedule failed:", err);
+          alert("ลบไม่สำเร็จ กรุณาลองใหม่");
+        }
+      }
+
+      // ===== Notify (manual) =====
+      async function manualNotify(scheduleId, btnEl) {
+        try {
+          if (btnEl) {
+            btnEl.disabled = true;
+            btnEl.classList.add("opacity-70", "cursor-not-allowed");
+            btnEl.textContent = "กำลังส่ง...";
+          }
+          await notifyNow(scheduleId);
+          alert("ส่งแจ้งเตือนเรียบร้อย ✅");
+          await loadSchedules();
+        } catch (err) {
+          console.error("manualNotify failed:", err);
+          alert("ส่งแจ้งเตือนไม่สำเร็จ ❌\n\n" + (err?.message || err));
+        } finally {
+          if (btnEl) {
+            btnEl.disabled = false;
+            btnEl.classList.remove("opacity-70", "cursor-not-allowed");
+            btnEl.textContent = "แจ้งเตือน";
+          }
+        }
+      }
+
+      // ===== Event handlers =====
+      if (btnLogout) {
+        btnLogout.addEventListener("click", async () => {
+          try {
+            await signOut(auth);
+            window.location.href = "login.html";
+          } catch (err) {
+            console.error(err);
+            alert("ออกจากระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+          }
+        });
+      }
+
+      if (btnThisWeek) {
+        btnThisWeek.addEventListener("click", (e) => {
+          e.preventDefault();
+          setThisWeekRange();
+          loadSchedules();
+        });
+      }
+
+      if (doctorSelect) doctorSelect.addEventListener("change", () => loadSchedules());
+      if (startDateInput) startDateInput.addEventListener("change", () => loadSchedules());
+      if (endDateInput) endDateInput.addEventListener("change", () => loadSchedules());
+
+      if (btnNewShift) {
+        btnNewShift.addEventListener("click", () => openCreateModal());
+      }
+
+      if (btnCloseShiftModal) {
+        btnCloseShiftModal.addEventListener("click", (e) => {
+          e.preventDefault();
+          closeModal();
+        });
+      }
+      if (btnCancelShift) {
+        btnCancelShift.addEventListener("click", (e) => {
+          e.preventDefault();
+          closeModal();
+        });
+      }
+
+      if (newShiftForm) {
+        newShiftForm.addEventListener("submit", (e) => {
+          e.preventDefault();
+          saveShiftFromModal();
+        });
+      }
+
+      // ===== table actions (event delegation) =====
+      if (tableBody) {
+        tableBody.addEventListener("click", async (e) => {
+          const btn = e.target?.closest?.("button");
+          if (!btn) return;
+
+          const id = btn.getAttribute("data-id");
+          if (!id) return;
+
+          if (btn.classList.contains("js-edit")) {
+            await openEditModal(id);
+            return;
+          }
+          if (btn.classList.contains("js-delete")) {
+            await deleteSchedule(id);
+            return;
+          }
+          if (btn.classList.contains("js-notify")) {
+            await manualNotify(id, btn);
+            return;
+          }
+        });
+      }
+
+      // ===== Auth check =====
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          window.location.href = "login.html?next=/admin-doctor-schedules.html";
+          return;
+        }
+
+        const token = await user.getIdTokenResult(true);
+        const claims = token.claims;
+        console.log("claims (schedule page) =", claims);
+
+        const isAdmin = claims.role === "admin" || claims.admin === true;
+        const isStaff = claims.role === "staff" || claims.staff === true;
+
+        if (!isAdmin && !isStaff) {
+          alert("หน้านี้สำหรับผู้ดูแลระบบหรือเจ้าหน้าที่เท่านั้น");
+          window.location.href = "admin.html";
+          return;
+        }
+
+        // ✅✅✅ เพิ่ม 3 บรรทัดตามที่ขอ (หลังเช็คสิทธิผ่านแล้ว)
+        const idToken = await user.getIdToken(true);
+        window.__MEDEASE_ID_TOKEN__ = idToken;
+        console.log("ID_TOKEN =", idToken);
+
+        if (adminEmailEl) adminEmailEl.textContent = user.email || "-";
+
+        await loadDoctors();
+        setThisWeekRange();
+        await loadSchedules();
+      });
+    });
+  </script>
+</head>
+
+<body>
+  <!-- SIDEBAR -->
+  <aside class="sidebar fixed top-0 left-0 h-full w-56 flex flex-col text-slate-700 shadow-sm z-10">
+    <div class="p-6 border-b border-slate-100">
+      <span class="text-2xl font-bold tracking-wide flex items-center gap-2 text-slate-900">
+        <i class="fa-solid fa-stethoscope text-pink-400"></i> MedEase
+      </span>
+      <div class="mt-2 text-xs text-slate-500">Admin Dashboard</div>
+    </div>
+
+    <nav class="flex-1 p-4 space-y-1 text-sm">
+      <a href="admin.html" class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900">
+        <i class="fa fa-gauge-high mr-2"></i>แดชบอร์ดหลัก
+      </a>
+      <a href="admin-doctor-schedules.html" class="block px-4 py-2 rounded-lg bg-slate-100 text-slate-900 font-semibold">
+        <i class="fa-solid fa-user-doctor mr-2"></i>ตารางเวรแพทย์
+      </a>
+      <a href="admin-certificates.html" class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900">
+        <i class="fa fa-file-medical mr-2"></i>ใบรับรองแพทย์
+      </a>
+      <a href="user-conversations.html" class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900">
+        <i class="fa-solid fa-comments mr-2"></i>บทสนทนาผู้ใช้
+      </a>
+      <a href="admin-users.html" class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900">
+        <i class="fa fa-user-shield mr-2"></i>แอดมิน
+      </a>
+    </nav>
+
+    <div class="mt-auto mb-6 px-6 text-xs text-slate-400">
+      © 2025 MedEase
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="ml-56 min-h-screen flex flex-col">
+    <!-- TOP BAR -->
+    <header class="bg-white/90 border-b border-slate-100">
+      <div class="max-w-6xl mx-auto px-4 lg:px-8 py-4 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <img
+            src="Arisa.png"
+            alt="Arisa - MedEase Assistant"
+            class="h-10 w-10 rounded-full object-cover border border-slate-200"
+          />
+          <div>
+            <p class="text-xs font-semibold text-sky-700">MedEase Admin</p>
+            <h1 class="text-lg md:text-xl font-bold text-slate-900">
+              จัดการตารางเวรแพทย์
+            </h1>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <span
+            id="adminEmail"
+            class="px-3 py-1 rounded-full bg-slate-50 border border-slate-200 text-xs md:text-sm text-slate-800"
+          >
+            ...
+          </span>
+          <button
+            id="btnLogout"
+            class="px-4 py-1.5 rounded-md bg-rose-500 text-white text-xs md:text-sm font-medium hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-300"
+          >
+            ออกจากระบบ
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <section class="max-w-6xl mx-auto px-4 lg:px-8 py-6 flex-1 space-y-4">
+      <!-- Filters -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-wrap gap-3 items-end">
+        <div class="w-full sm:w-1/3">
+          <label class="block text-sm font-medium text-slate-600 mb-1">
+            เลือกแพทย์
+          </label>
+          <select
+            id="doctorSelect"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-400"
+          >
+            <option value="">-- เลือกแพทย์ --</option>
+          </select>
+        </div>
+        <div class="w-full sm:w-1/3">
+          <label class="block text-sm font-medium text-slate-600 mb-1">
+            วันที่เริ่ม
+          </label>
+          <input
+            id="startDate"
+            type="date"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-400"
+          />
+        </div>
+        <div class="w-full sm:w-1/3">
+          <label class="block text-sm font-medium text-slate-600 mb-1">
+            วันที่สิ้นสุด
+          </label>
+          <input
+            id="endDate"
+            type="date"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-400"
+          />
+        </div>
+        <div class="flex gap-2 ml-auto">
+          <button
+            id="btnThisWeek"
+            class="px-3 py-2 text-xs rounded-lg border text-slate-600"
+          >
+            สัปดาห์นี้
+          </button>
+          <button
+            id="btnNewShift"
+            class="px-4 py-2 text-sm rounded-lg bg-sky-500 text-white hover:bg-sky-600"
+          >
+            + เพิ่มกะเวร
+          </button>
+          <!-- ✅ (UX toggle จะถูก inject ด้วย JS ตรงนี้อัตโนมัติ) -->
+        </div>
+      </div>
+
+      <!-- ตารางเวร -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+        <h2 class="text-sm font-semibold text-slate-700 mb-3">
+          ตารางเวร
+        </h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-100 text-slate-600">
+              <tr>
+                <th class="px-3 py-2 text-left">วันที่ / สถานะ</th>
+                <th class="px-3 py-2 text-left">เวลา</th>
+                <th class="px-3 py-2 text-left">แพทย์</th>
+                <th class="px-3 py-2 text-left">ประเภทเวร</th>
+                <th class="px-3 py-2 text-left">สถานที่</th>
+                <th class="px-3 py-2 text-left">หมายเหตุ</th>
+                <th class="px-3 py-2 text-right">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="scheduleTableBody" class="divide-y divide-slate-100">
+              <!-- เดี๋ยวเราจะเติมด้วย JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal เพิ่ม/แก้ไขกะเวรแพทย์ -->
+  <div
+    id="newShiftModal"
+    class="fixed inset-0 z-30 hidden items-center justify-center bg-black/40"
+  >
+    <div class="bg-white rounded-2xl shadow-lg w-full max-w-lg p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 id="shiftModalTitle" class="text-lg font-semibold text-slate-900">
+          เพิ่มกะเวรแพทย์
+        </h2>
+        <button
+          type="button"
+          id="btnCloseShiftModal"
+          class="text-slate-400 hover:text-slate-600"
+        >
+          ✕
+        </button>
+      </div>
+
+      <form id="newShiftForm" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">
+            แพทย์
+          </label>
+          <div class="px-3 py-2 rounded-lg border bg-slate-50 text-sm text-slate-800">
+            <span id="shiftDoctorName">-</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">
+            วันที่
+          </label>
+          <input
+            type="date"
+            id="shiftDate"
+            required
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-400"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium text-slate-600 mb-1">
+              เวลาเริ่ม
+            </label>
+            <input
+              type="time"
+              id="shiftStartTime"
+              required
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-400"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-600 mb-1">
+              เวลาสิ้นสุด
+            </label>
+            <input
+              type="time"
+              id="shiftEndTime"
+              required
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-400"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">
+            ประเภทเวร
+          </label>
+          <select
+            id="shiftTypeInput"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-400"
+          >
+            <option value="morning">เช้า</option>
+            <option value="afternoon">บ่าย</option>
+            <option value="night">ดึก</option>
+            <option value="oncall">On call</option>
+            <option value="other">อื่น ๆ</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">
+            สถานที่
+          </label>
+          <input
+            type="text"
+            id="shiftLocationInput"
+            placeholder="เช่น คลินิกเวชกรรม 1, ห้องตรวจ OPD"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-400"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">
+            หมายเหตุ
+          </label>
+          <textarea
+            id="shiftNoteInput"
+            rows="2"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-400"
+            placeholder="เช่น OPD – ตรวจผู้ป่วยนอก"
+          ></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium text-slate-600 mb-1">
+              สถานะ
+            </label>
+            <select
+              id="shiftStatusInput"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-400"
+            >
+              <option value="confirmed">confirmed</option>
+              <option value="pending">pending</option>
+              <option value="cancelled">cancelled</option>
+            </select>
+          </div>
+
+          <label class="flex items-center gap-2 px-3 py-2 rounded-lg border bg-white text-xs text-slate-700 select-none mt-6">
+            <input id="shiftNotifyAfterSave" type="checkbox" class="h-4 w-4 accent-amber-500" />
+            <span>ส่งแจ้งเตือนทันทีหลังบันทึก</span>
+          </label>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            id="btnCancelShift"
+            class="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+          >
+            ยกเลิก
+          </button>
+          <button
+            type="submit"
+            id="btnSaveShift"
+            class="px-4 py-2 text-sm rounded-lg bg-sky-600 text-white hover:bg-sky-700"
+          >
+            บันทึกกะเวร
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

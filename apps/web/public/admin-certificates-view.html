@@ -1,0 +1,754 @@
+<!-- file: public/admin-certificates-view.html -->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>รายละเอียดคำขอใบรับรองแพทย์ - MedEase Admin</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
+
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --secondary: #8b5cf6;
+      --bg-soft: #f8fafc;
+      --text-main: #0f172a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Sarabun', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: var(--bg-soft);
+      color: var(--text-main);
+    }
+    a:focus-visible, button:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+    .sidebar { background: #ffffff; border-right: 1px solid #e2e8f0; }
+    .sb-title { letter-spacing: 0.04em; }
+    .sidebar a { transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease; }
+    .sidebar a:hover { transform: translateX(2px); }
+    .card-border { border: 1px solid #e2e8f0; border-radius: 1rem; }
+    .main-card { box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06); border: 1px solid #e2e8f0; }
+    .status-pill {
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar fixed top-0 left-0 h-full w-56 flex flex-col text-slate-700 shadow-sm z-10">
+    <div class="p-6 border-b border-slate-100">
+      <span class="sb-title text-2xl font-bold tracking-wide flex items-center gap-2 text-slate-900">
+        <i class="fa-solid fa-stethoscope text-pink-400"></i> MedEase
+      </span>
+      <div class="mt-2 text-xs text-slate-500">Admin Dashboard</div>
+    </div>
+
+    <nav class="flex-1 p-4 space-y-1 text-sm">
+      <a href="https://medeasehosting.web.app/admin.html"
+         class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900">
+        <i class="fa fa-gauge-high mr-2"></i>แดชบอร์ดหลัก
+      </a>
+      <a href="https://medeasehosting.web.app/admin-certificates.html"
+         class="block px-4 py-2 rounded-lg bg-slate-100 text-slate-900 font-semibold">
+        <i class="fa fa-table mr-2"></i>ผู้ขอใบรับรอง
+      </a>
+      <a href="https://medeasehosting.web.app/admin-users.html"
+         class="block px-4 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900">
+        <i class="fa fa-user-shield mr-2"></i>แอดมิน
+      </a>
+    </nav>
+
+    <div class="mt-auto mb-6 px-6 text-xs text-slate-400">
+      © 2025 MedEase
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="ml-56 min-h-screen pb-12 flex flex-col">
+
+    <!-- TOP BAR -->
+    <header class="bg-white/90 shadow-sm flex flex-wrap gap-4 items-center justify-between px-6 lg:px-8 py-4 card-border mt-4 mx-4">
+      <div>
+        <p class="text-xs font-semibold text-sky-700 flex items-center gap-2">
+          <i class="fa-solid fa-file-medical text-pink-400"></i>
+          MedEase Admin · ใบรับรองแพทย์
+        </p>
+        <h1 class="text-lg md:text-xl font-bold text-slate-900">
+          รายละเอียดคำขอใบรับรอง · <span id="titleFullname">-</span>
+        </h1>
+      </div>
+
+      <div class="flex flex-col md:items-end gap-1 text-xs md:text-sm">
+        <div class="text-slate-600">
+          เข้าสู่ระบบในชื่อ:
+          <span id="adminEmail" class="font-semibold text-slate-900">-</span>
+        </div>
+        <div id="topStatusBadge" class="mt-1"></div>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <section class="px-4 lg:px-8 py-8 w-full max-w-5xl mx-auto">
+      <!-- การ์ดหลัก -->
+      <div class="bg-white rounded-2xl main-card p-6 md:p-8 mb-6">
+        <div class="grid md:grid-cols-2 gap-6 md:gap-8 mb-6">
+          <!-- ข้อมูลผู้ขอ -->
+          <div>
+            <h2 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-id-card text-pink-400"></i> ข้อมูลผู้ขอ
+            </h2>
+            <div class="space-y-1.5 text-sm md:text-base text-slate-700">
+              <p><span class="font-semibold">ชื่อ-นามสกุล:</span> <span id="vFullname">-</span></p>
+              <p><span class="font-semibold">LINE Name:</span> <span id="vDisplayName">-</span></p>
+              <p><span class="font-semibold">อีเมล:</span> <span id="vEmail">-</span></p>
+              <p><span class="font-semibold">เบอร์โทร:</span> <span id="vPhone">-</span></p>
+              <p><span class="font-semibold">เลขบัตรประชาชน:</span> <span id="vIdcard">-</span></p>
+              <p><span class="font-semibold">ประเภทผู้ป่วย:</span> <span id="vPatientType">-</span></p>
+              <p><span class="font-semibold">LINE userId:</span> <span id="vLineUserId">-</span></p>
+              <p class="pt-1 text-xs text-slate-400">
+                Doc ID: <span id="vDocId">-</span>
+              </p>
+            </div>
+          </div>
+
+          <!-- สถานะคำขอ -->
+          <div>
+            <h2 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-clipboard-list text-pink-400"></i> สถานะคำขอ
+            </h2>
+            <div class="space-y-1.5 text-sm md:text-base text-slate-700">
+              <p>
+                <span class="font-semibold">สถานะ:</span>
+                <span id="vStatusText" class="ml-1"></span>
+              </p>
+              <p><span class="font-semibold">สร้างเมื่อ:</span> <span id="vCreatedAt">-</span></p>
+              <p><span class="font-semibold">อัปเดตล่าสุด:</span> <span id="vUpdatedAt">-</span></p>
+              <p><span class="font-semibold">อนุมัติโดย:</span> <span id="vApprovedBy">-</span></p>
+              <p><span class="font-semibold">อนุมัติเมื่อ:</span> <span id="vApprovedAt">-</span></p>
+              <p><span class="font-semibold">เหตุผลที่ไม่อนุมัติ (ถ้ามี):</span> <span id="vRejectReason">-</span></p>
+              <p><span class="font-semibold">ชื่อแพทย์ผู้ตรวจ (ถ้ามี):</span> <span id="vDoctorName">-</span></p>
+              <p><span class="font-semibold">จำนวนวันที่ควรหยุดพัก:</span> <span id="vDaysOff">-</span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- อาการ -->
+        <div class="mb-4">
+          <h3 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-notes-medical text-pink-400"></i> อาการ / รายละเอียด
+          </h3>
+          <div class="bg-slate-50 rounded-xl px-4 py-3 text-sm md:text-base text-slate-700" id="vSymptoms">-</div>
+        </div>
+
+        <!-- วินิจฉัย -->
+        <div class="mb-4">
+          <h3 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-user-doctor text-pink-400"></i> วินิจฉัยโรค / คำแนะนำแพทย์ (ที่แสดงใน PDF)
+          </h3>
+          <div class="bg-slate-50 rounded-xl px-4 py-3 text-sm md:text-base text-slate-700" id="vDiagnosis">-</div>
+        </div>
+
+        <!-- ฟอร์มแก้ไขข้อมูล (แก้ได้ทุกฟิลด์) -->
+        <div class="border-t border-slate-200 pt-4 mt-4">
+          <h3 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-pen-to-square text-sky-500"></i> แก้ไขข้อมูลคำขอ (แก้ได้ทุกฟิลด์)
+          </h3>
+
+          <div class="grid md:grid-cols-2 gap-4 md:gap-6 text-sm">
+            <!-- ข้อมูลผู้ขอ -->
+            <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+              <div class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-user text-pink-400"></i> ข้อมูลผู้ขอ
+              </div>
+
+              <div class="space-y-3">
+                <div>
+                  <label class="font-semibold text-slate-800 block mb-1">ชื่อ-นามสกุล (fullname)</label>
+                  <input id="inputFullname" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-300" />
+                </div>
+
+                <div>
+                  <label class="font-semibold text-slate-800 block mb-1">LINE Name (displayName)</label>
+                  <input id="inputDisplayName" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-300" />
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="font-semibold text-slate-800 block mb-1">อีเมล (email)</label>
+                    <input id="inputEmail" type="email" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-300" />
+                  </div>
+                  <div>
+                    <label class="font-semibold text-slate-800 block mb-1">เบอร์โทร (phone)</label>
+                    <input id="inputPhone" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-300" />
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="font-semibold text-slate-800 block mb-1">เลขบัตรประชาชน (idcard)</label>
+                    <input id="inputIdcard" maxlength="13" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="13 หลัก" />
+                    <p class="mt-1 text-[11px] text-slate-400">ระบบจะตัดเฉพาะตัวเลข 13 หลัก</p>
+                  </div>
+                  <div>
+                    <label class="font-semibold text-slate-800 block mb-1">ประเภทผู้ป่วย (patientType)</label>
+                    <input id="inputPatientType" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="เช่น ผู้ป่วยนอก" />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="font-semibold text-slate-800 block mb-1">LINE userId (lineUserId)</label>
+                  <input id="inputLineUserId" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-300" />
+                </div>
+
+                <div>
+                  <label class="font-semibold text-slate-800 block mb-1">อาการ / รายละเอียด (symptoms)</label>
+                  <textarea id="inputSymptoms" rows="3" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-300"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- สถานะ + สำหรับ PDF -->
+            <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+              <div class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-file-medical text-pink-400"></i> สถานะ + ข้อมูลแพทย์ (ใช้ใน PDF)
+              </div>
+
+              <div class="space-y-3">
+                <div>
+                  <label class="font-semibold text-slate-800 block mb-1">สถานะ (status)</label>
+                  <select id="selectStatus" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-300">
+                    <option value="pending">pending (รออนุมัติ)</option>
+                    <option value="approved">approved (อนุมัติแล้ว)</option>
+                    <option value="rejected">rejected (ไม่อนุมัติ)</option>
+                    <option value="cancelled">cancelled (ยกเลิก)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="font-semibold text-slate-800 block mb-1">ชื่อแพทย์ผู้ตรวจ (doctorName)</label>
+                  <input id="inputDoctorName" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-300" />
+                </div>
+
+                <div>
+                  <label class="font-semibold text-slate-800 block mb-1">จำนวนวันที่ควรหยุดพัก (daysOff)</label>
+                  <input id="inputDaysOff" type="number" min="0" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-300" />
+                  <p class="mt-1 text-[11px] text-slate-400">ใส่ 0 ได้ / ปล่อยว่าง = null</p>
+                </div>
+
+                <div>
+                  <label class="font-semibold text-slate-800 block mb-1">วินิจฉัยโรค / คำแนะนำแพทย์ (diagnosis)</label>
+                  <textarea id="inputDiagnosis" rows="3" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-300"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="font-semibold text-slate-800 block mb-1">approvedBy</label>
+                    <input id="inputApprovedBy" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-300" />
+                  </div>
+                  <div>
+                    <label class="font-semibold text-slate-800 block mb-1">approvedAt</label>
+                    <input id="inputApprovedAt" type="datetime-local" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-300" />
+                  </div>
+                </div>
+
+                <details class="rounded-xl border border-slate-200 bg-white p-3">
+                  <summary class="cursor-pointer font-semibold text-slate-800">
+                    ปรับเวลา (ขั้นสูง) · createdAt
+                  </summary>
+                  <div class="mt-3">
+                    <label class="font-semibold text-slate-800 block mb-1">createdAt</label>
+                    <input id="inputCreatedAt" type="datetime-local" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-300" />
+                    <p class="mt-1 text-[11px] text-slate-400">ปล่อยว่าง = ไม่แก้ createdAt</p>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ปุ่มจัดการ -->
+      <div class="flex flex-wrap gap-3">
+        <a href="https://medeasehosting.web.app/admin-certificates.html"
+           class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-sm font-semibold shadow-sm hover:bg-slate-50">
+          <i class="fa-solid fa-arrow-left"></i> กลับไปหน้ารายการใบรับรอง
+        </a>
+
+        <button id="btnApprove"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold shadow-sm hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed">
+          <i class="fa-solid fa-check-circle"></i> อนุมัติคำขอนี้
+        </button>
+
+        <button id="btnReject"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-500 text-white text-sm font-semibold shadow-sm hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed">
+          <i class="fa-solid fa-xmark-circle"></i> ไม่อนุมัติ / ยกเลิกคำขอ
+        </button>
+
+        <button id="btnSave"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-500 text-white text-sm font-semibold shadow-sm hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed">
+          <i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูล (ทั้งหมด)
+        </button>
+
+        <button id="btnDelete"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-200 text-slate-700 text-sm font-semibold shadow-sm hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed">
+          <i class="fa-solid fa-trash-can"></i> ลบคำขอนี้
+        </button>
+      </div>
+
+      <p id="actionStatus" class="mt-3 text-xs text-slate-500"></p>
+    </section>
+  </main>
+
+  <!-- SCRIPT -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      updateDoc,
+      deleteDoc,
+      serverTimestamp,
+      Timestamp
+    } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+
+    // ===== CONFIG =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzRiHElsEa_PFOf90mJXzVELsuHwG5_fM",
+      authDomain: "medeasehosting.firebaseapp.com",
+      projectId: "medeasehosting",
+      storageBucket: "medeasehosting.appspot.com",
+      messagingSenderId: "527953102643",
+      appId: "1:527953102643:web:bce13ed6305ef583016046"
+    };
+
+    // ===== API BASE =====
+    function getApiBase() {
+      const byLs = localStorage.getItem("MEDEASE_API_BASE");
+      if (byLs) return byLs;
+
+      const params = new URLSearchParams(location.search);
+      const byQuery = params.get("api");
+      if (byQuery) return byQuery;
+
+      return "https://semimechanical-subovoid-hue.ngrok-free.dev";
+    }
+    const API_BASE = getApiBase();
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    // ===== DOM =====
+    const adminEmailEl   = document.getElementById("adminEmail");
+    const titleFullname  = document.getElementById("titleFullname");
+    const topStatusBadge = document.getElementById("topStatusBadge");
+
+    const vDocId       = document.getElementById("vDocId");
+    const vFullname    = document.getElementById("vFullname");
+    const vDisplayName = document.getElementById("vDisplayName");
+    const vEmail       = document.getElementById("vEmail");
+    const vPhone       = document.getElementById("vPhone");
+    const vIdcard      = document.getElementById("vIdcard");
+    const vPatientType = document.getElementById("vPatientType");
+    const vLineUserId  = document.getElementById("vLineUserId");
+
+    const vStatusText  = document.getElementById("vStatusText");
+    const vCreatedAt   = document.getElementById("vCreatedAt");
+    const vUpdatedAt   = document.getElementById("vUpdatedAt");
+    const vApprovedBy  = document.getElementById("vApprovedBy");
+    const vApprovedAt  = document.getElementById("vApprovedAt");
+    const vRejectReason= document.getElementById("vRejectReason");
+
+    const vDoctorName  = document.getElementById("vDoctorName");
+    const vDaysOff     = document.getElementById("vDaysOff");
+    const vSymptoms    = document.getElementById("vSymptoms");
+    const vDiagnosis   = document.getElementById("vDiagnosis");
+
+    // inputs (แก้ได้ทุกฟิลด์)
+    const inputFullname    = document.getElementById("inputFullname");
+    const inputDisplayName = document.getElementById("inputDisplayName");
+    const inputEmail       = document.getElementById("inputEmail");
+    const inputPhone       = document.getElementById("inputPhone");
+    const inputIdcard      = document.getElementById("inputIdcard");
+    const inputPatientType = document.getElementById("inputPatientType");
+    const inputLineUserId  = document.getElementById("inputLineUserId");
+    const inputSymptoms    = document.getElementById("inputSymptoms");
+
+    const selectStatus     = document.getElementById("selectStatus");
+    const inputDoctorName  = document.getElementById("inputDoctorName");
+    const inputDaysOff     = document.getElementById("inputDaysOff");
+    const inputDiagnosis   = document.getElementById("inputDiagnosis");
+
+    const inputApprovedBy  = document.getElementById("inputApprovedBy");
+    const inputApprovedAt  = document.getElementById("inputApprovedAt");
+    const inputCreatedAt   = document.getElementById("inputCreatedAt");
+
+    const btnApprove   = document.getElementById("btnApprove");
+    const btnReject    = document.getElementById("btnReject");
+    const btnSave      = document.getElementById("btnSave");
+    const btnDelete    = document.getElementById("btnDelete");
+    const actionStatus = document.getElementById("actionStatus");
+
+    // ===== GET id จาก URL =====
+    const params = new URLSearchParams(location.search);
+    const docId = params.get("id");
+    if (!docId) {
+      alert("ไม่พบรหัสคำขอ (id) ใน URL");
+      location.href = "admin-certificates.html";
+    }
+
+    const reqRef = doc(db, "certificates_requests", docId);
+
+    // ===== Helper =====
+    function fmtTs(ts) {
+      if (!ts || !ts.toDate) return "-";
+      try { return ts.toDate().toLocaleString("th-TH"); } catch { return "-"; }
+    }
+
+    function toDatetimeLocal(ts) {
+      if (!ts || !ts.toDate) return "";
+      const d = ts.toDate();
+      const pad = (n) => String(n).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      const mm = pad(d.getMonth() + 1);
+      const dd = pad(d.getDate());
+      const hh = pad(d.getHours());
+      const mi = pad(d.getMinutes());
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+    }
+
+    function setStatus(msg, tone = "muted") {
+      const base = "mt-3 text-xs ";
+      if (tone === "ok") actionStatus.className = base + "text-emerald-600";
+      else if (tone === "warn") actionStatus.className = base + "text-rose-600";
+      else if (tone === "err") actionStatus.className = base + "text-red-500";
+      else actionStatus.className = base + "text-slate-500";
+      actionStatus.textContent = msg || "";
+    }
+
+    function renderStatus(status) {
+      let text = "รออนุมัติ";
+      let cls  = "bg-pink-100 text-pink-600";
+      if (status === "approved") { text = "อนุมัติแล้ว"; cls = "bg-emerald-100 text-emerald-700"; }
+      else if (status === "rejected" || status === "cancelled") { text = "ไม่อนุมัติ / ยกเลิก"; cls = "bg-slate-200 text-slate-700"; }
+
+      vStatusText.innerHTML = `<span class="status-pill ${cls}">${text}</span>`;
+      topStatusBadge.innerHTML = `<span class="status-pill ${cls}">สถานะ: ${text}</span>`;
+    }
+
+    const btnHtml = new Map();
+    function setBtnLoading(btn, loading, textLoading) {
+      if (!btnHtml.has(btn)) btnHtml.set(btn, btn.innerHTML);
+      if (loading) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i><span>${textLoading || "กำลังทำงาน..."}</span>`;
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = btnHtml.get(btn) || btn.innerHTML;
+      }
+    }
+
+    function setAllDisabled(disabled) {
+      btnApprove.disabled = disabled;
+      btnReject.disabled = disabled;
+      btnSave.disabled = disabled;
+      btnDelete.disabled = disabled;
+    }
+
+    // ===== call Admin API =====
+    async function callAdminCertApi(apiPath, body = {}) {
+      const user = auth.currentUser;
+      if (!user) throw new Error("กรุณาล็อกอินแอดมินก่อน");
+
+      const token = await user.getIdToken();
+      const url = apiPath.startsWith("http") ? apiPath : `${API_BASE}${apiPath}`;
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      let data = {};
+      try { data = await res.json(); } catch {}
+      if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+      return data;
+    }
+
+    // ===== โหลดข้อมูล =====
+    async function loadRequest() {
+      const snap = await getDoc(reqRef);
+      if (!snap.exists()) {
+        alert("ไม่พบข้อมูลคำขอใบรับรอง");
+        location.href = "admin-certificates.html";
+        return;
+      }
+
+      const d = snap.data();
+
+      vDocId.textContent = docId;
+      titleFullname.textContent = d.fullname || "-";
+
+      // view
+      vFullname.textContent    = d.fullname || "-";
+      vDisplayName.textContent = d.displayName ?? "-";
+      vEmail.textContent       = d.email || "-";
+      vPhone.textContent       = d.phone || "-";
+      vIdcard.textContent      = d.idcard || "-";
+      vPatientType.textContent = d.patientType || "-";
+      vLineUserId.textContent  = d.lineUserId || "-";
+
+      vDoctorName.textContent  = d.doctorName || "-";
+      vDaysOff.textContent     = (d.daysOff === 0 || d.daysOff) ? `${d.daysOff} วัน` : "-";
+
+      vSymptoms.textContent  = d.symptoms || "-";
+      vDiagnosis.textContent = d.diagnosis || "-";
+
+      vCreatedAt.textContent = fmtTs(d.createdAt);
+      vUpdatedAt.textContent = fmtTs(d.updatedAt);
+
+      vApprovedBy.textContent = d.approvedBy || "-";
+      vApprovedAt.textContent = fmtTs(d.approvedAt);
+      vRejectReason.textContent = d.rejectReason || d.reason || "-";
+
+      renderStatus(d.status || "pending");
+
+      // fill form
+      inputFullname.value    = d.fullname || "";
+      inputDisplayName.value = d.displayName ?? "";
+      inputEmail.value       = d.email || "";
+      inputPhone.value       = d.phone || "";
+      inputIdcard.value      = d.idcard || "";
+      inputPatientType.value = d.patientType || "";
+      inputLineUserId.value  = d.lineUserId || "";
+      inputSymptoms.value    = d.symptoms || "";
+
+      selectStatus.value     = d.status || "pending";
+      inputDoctorName.value  = d.doctorName || "";
+      inputDaysOff.value     = (d.daysOff === 0 || d.daysOff) ? String(d.daysOff) : "";
+      inputDiagnosis.value   = d.diagnosis || "";
+
+      inputApprovedBy.value  = d.approvedBy || "";
+      inputApprovedAt.value  = toDatetimeLocal(d.approvedAt);
+      inputCreatedAt.value   = ""; // ตามสเปค: ปล่อยว่าง = ไม่แก้ createdAt
+
+      // ปิด approve/reject ถ้าสถานะปิดแล้ว
+      const closed = (d.status === "approved" || d.status === "rejected" || d.status === "cancelled");
+      btnApprove.disabled = closed;
+      btnReject.disabled  = closed;
+    }
+
+    // ===== Auth Guard =====
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        location.href = `login.html?next=/admin-certificates-view.html?id=${encodeURIComponent(docId)}`;
+        return;
+      }
+
+      try {
+        const token = await user.getIdTokenResult(true);
+        if (!token.claims.admin) {
+          alert("คุณไม่มีสิทธิ์เข้าถึงหน้านี้");
+          await signOut(auth);
+          location.href = "index.html";
+          return;
+        }
+
+        adminEmailEl.textContent = user.email || "-";
+        setStatus(`API: ${API_BASE}`, "muted");
+        await loadRequest();
+      } catch (err) {
+        console.error("auth error", err);
+        alert("ไม่สามารถตรวจสอบสิทธิ์ได้ กรุณาลองใหม่");
+      }
+    });
+
+    // ===== Approve / Reject =====
+    async function approveCertificate() {
+      if (!docId) return;
+      if (!confirm("ยืนยันการอนุมัติคำขอใบรับรองนี้หรือไม่ ?")) return;
+
+      try {
+        setAllDisabled(true);
+        setBtnLoading(btnApprove, true, "กำลังอนุมัติ...");
+        setStatus("⏳ กำลังอนุมัติและสร้างใบรับรอง...", "muted");
+
+        await callAdminCertApi(`/admin/certificates/${docId}/approve`, {});
+        await loadRequest();
+
+        setStatus("✅ อนุมัติสำเร็จแล้ว (ระบบสร้าง PDF และแจ้งผู้ใช้แล้ว)", "ok");
+      } catch (err) {
+        console.error(err);
+        setStatus("❌ อนุมัติไม่สำเร็จ: " + err.message, "err");
+        alert("อนุมัติไม่สำเร็จ: " + err.message);
+      } finally {
+        setBtnLoading(btnApprove, false);
+        setAllDisabled(false);
+        try { await loadRequest(); } catch {}
+      }
+    }
+
+    async function rejectCertificate() {
+      if (!docId) return;
+      const reason = prompt("กรุณาระบุเหตุผลที่ไม่อนุมัติ / ยกเลิกคำขอนี้:", "");
+      if (reason === null) return;
+
+      try {
+        setAllDisabled(true);
+        setBtnLoading(btnReject, true, "กำลังบันทึก...");
+        setStatus("⏳ กำลังบันทึกการไม่อนุมัติ...", "muted");
+
+        await callAdminCertApi(`/admin/certificates/${docId}/reject`, { reason });
+        await loadRequest();
+
+        setStatus("✅ บันทึกการไม่อนุมัติเรียบร้อยแล้ว (ระบบแจ้งผู้ใช้แล้ว)", "warn");
+      } catch (err) {
+        console.error(err);
+        setStatus("❌ ไม่อนุมัติไม่สำเร็จ: " + err.message, "err");
+        alert("ไม่อนุมัติไม่สำเร็จ: " + err.message);
+      } finally {
+        setBtnLoading(btnReject, false);
+        setAllDisabled(false);
+        try { await loadRequest(); } catch {}
+      }
+    }
+
+    // ===== Update (แก้ได้ทุกฟิลด์) =====
+    async function updateCertificate() {
+      if (!docId) return;
+
+      const fullname    = inputFullname.value.trim();
+      const displayName = inputDisplayName.value.trim();
+      const email       = inputEmail.value.trim();
+      const phone       = inputPhone.value.trim();
+
+      const idcard = inputIdcard.value.replace(/\D/g, "").slice(0, 13);
+      const patientType = inputPatientType.value.trim();
+      const lineUserId  = inputLineUserId.value.trim();
+      const symptoms    = inputSymptoms.value.trim();
+
+      const status     = selectStatus.value || "pending";
+      const doctorName = inputDoctorName.value.trim();
+      const diagnosis  = inputDiagnosis.value.trim();
+
+      const daysOffRaw = inputDaysOff.value;
+      const daysOff =
+        daysOffRaw === "" || daysOffRaw === null || daysOffRaw === undefined
+          ? null
+          : Number(daysOffRaw);
+
+      if (daysOff !== null && (Number.isNaN(daysOff) || daysOff < 0)) {
+        alert("จำนวนวันที่ควรหยุดพัก ต้องเป็นตัวเลข 0 ขึ้นไป");
+        return;
+      }
+
+      const approvedBy = inputApprovedBy.value.trim();
+      const approvedAtStr = inputApprovedAt.value;
+      const createdAtStr  = inputCreatedAt.value;
+
+      const patch = {
+        fullname: fullname || null,
+        displayName: displayName === "" ? null : displayName,
+        email: email || null,
+        phone: phone || null,
+        idcard: idcard || null,
+        patientType: patientType || null,
+        lineUserId: lineUserId || null,
+        symptoms: symptoms || "",
+        status,
+        doctorName: doctorName || null,
+        daysOff: daysOff,
+        diagnosis: diagnosis || "",
+        approvedBy: approvedBy || null,
+        updatedAt: serverTimestamp(),
+      };
+
+      // approvedAt: ถ้ากรอก -> set, ถ้าว่าง -> ไม่แก้ (ปลอดภัยกว่า)
+      if (approvedAtStr) {
+        const dt = new Date(approvedAtStr);
+        if (!Number.isNaN(dt.getTime())) patch.approvedAt = Timestamp.fromDate(dt);
+      }
+
+      // createdAt: ตามสเปค ปล่อยว่าง = ไม่แก้
+      if (createdAtStr) {
+        const dt = new Date(createdAtStr);
+        if (!Number.isNaN(dt.getTime())) patch.createdAt = Timestamp.fromDate(dt);
+      }
+
+      try {
+        setBtnLoading(btnSave, true, "กำลังบันทึก...");
+        setStatus("⏳ กำลังบันทึกข้อมูล...", "muted");
+
+        await updateDoc(reqRef, patch);
+        await loadRequest();
+
+        setStatus("✅ บันทึกข้อมูลเรียบร้อยแล้ว", "ok");
+      } catch (err) {
+        console.error(err);
+        setStatus("❌ บันทึกไม่สำเร็จ: " + err.message, "err");
+        alert("บันทึกไม่สำเร็จ: " + err.message);
+      } finally {
+        setBtnLoading(btnSave, false);
+      }
+    }
+
+    // ===== Delete =====
+    async function deleteCertificate() {
+      if (!docId) return;
+      if (!confirm("ต้องการลบคำขอใบรับรองนี้ออกจากระบบหรือไม่?")) return;
+
+      try {
+        setBtnLoading(btnDelete, true, "กำลังลบ...");
+        setAllDisabled(true);
+        setStatus("⏳ กำลังลบข้อมูล...", "muted");
+
+        await deleteDoc(reqRef);
+
+        setStatus("✅ ลบคำขอเรียบร้อยแล้ว", "ok");
+        setTimeout(() => {
+          location.href = "admin-certificates.html";
+        }, 600);
+      } catch (err) {
+        console.error(err);
+        setStatus("❌ ลบไม่สำเร็จ: " + err.message, "err");
+        alert("ลบไม่สำเร็จ: " + err.message);
+      } finally {
+        setBtnLoading(btnDelete, false);
+        setAllDisabled(false);
+      }
+    }
+
+    btnApprove.addEventListener("click", approveCertificate);
+    btnReject.addEventListener("click", rejectCertificate);
+    btnSave.addEventListener("click", updateCertificate);
+    btnDelete.addEventListener("click", deleteCertificate);
+  </script>
+</body>
+</html>

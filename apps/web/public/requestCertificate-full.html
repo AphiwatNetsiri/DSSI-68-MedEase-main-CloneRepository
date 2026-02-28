@@ -1,0 +1,520 @@
+<!-- file: public/requestCertificate-full.html -->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ขอใบรับรองแพทย์ - MedEase</title>
+
+  <!-- LIFF SDK -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font: Sarabun -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    body { font-family: 'Sarabun', system-ui, sans-serif; }
+    .hero-bg {
+      background: radial-gradient(circle at 0% 0%, #ffe4f3 0, transparent 55%),
+                  radial-gradient(circle at 100% 0%, #dbeafe 0, transparent 55%),
+                  radial-gradient(circle at 50% 120%, #dcfce7 0, #f9fafb 60%);
+      min-height: 100vh;
+    }
+    .paper {
+      background: #fff;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      border: 1px solid #e2e8f0;
+    }
+    .line-dot {
+      border-bottom: 2px dotted #94a3b8;
+      height: 22px;
+    }
+    .mini-dot {
+      border-bottom: 1.5px dotted #94a3b8;
+      height: 18px;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800">
+  <!-- Navbar -->
+  <header class="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-slate-100">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      <a href="/index.html" class="flex items-center gap-2">
+        <img src="Arisa.png" alt="MedEase Logo" class="w-8 h-8 rounded-full object-contain shadow-sm" />
+        <div class="leading-tight">
+          <p class="text-xs text-pink-400 font-semibold">MedEase</p>
+          <p class="text-sm font-semibold text-slate-800">ขอใบรับรองแพทย์</p>
+        </div>
+      </a>
+
+      <div class="flex items-center gap-2">
+        <a
+          href="/index.html"
+          class="inline-flex items-center rounded-full border border-sky-200 bg-white/80 px-4 py-1.5 text-xs md:text-sm font-semibold text-sky-600 hover:bg-sky-50"
+        >
+          กลับหน้าแรก
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="hero-bg">
+    <section class="max-w-6xl mx-auto px-4 py-8 md:py-10">
+      <div class="grid lg:grid-cols-[1fr,420px] gap-8 items-start">
+
+        <!-- LEFT: Paper-like form -->
+        <div class="paper rounded-2xl overflow-hidden">
+          <div class="px-6 md:px-10 py-6 md:py-8">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 text-center">
+                  ใบรับรองแพทย์
+                </h1>
+                <p class="text-center text-xs text-slate-500 mt-1">
+                  กรอกข้อมูลเพื่อให้แพทย์พิจารณาออกเอกสาร (ฟอร์มจำลองตามแบบกระดาษ)
+                </p>
+              </div>
+
+              <div class="text-xs text-slate-700 min-w-[160px]">
+                <div class="flex items-center justify-end gap-2">
+                  <span>เล่มที่</span>
+                  <span class="inline-block w-24 mini-dot"></span>
+                </div>
+                <div class="flex items-center justify-end gap-2 mt-2">
+                  <span>เลขที่</span>
+                  <span class="inline-block w-24 mini-dot"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-6 border border-slate-300">
+              <!-- SECTION 1 -->
+              <div class="p-4 md:p-5 border-b border-slate-300">
+                <div class="font-bold text-slate-900">ส่วนที่ 1 ของผู้ขอรับใบรับรองสุขภาพ</div>
+
+                <div class="mt-4 grid md:grid-cols-[180px,1fr] gap-3 items-center">
+                  <div class="text-sm font-semibold">ข้าพเจ้า นาย/นาง/นางสาว <span class="text-pink-500">*</span></div>
+                  <input id="fullName" required
+                    class="w-full border-0 border-b-2 border-dotted border-slate-400 focus:outline-none focus:border-sky-400 bg-transparent py-1"
+                    placeholder="ชื่อ-นามสกุล" />
+                </div>
+
+                <div class="mt-3 grid md:grid-cols-[180px,1fr] gap-3 items-center">
+                  <div class="text-sm font-semibold">สถานที่อยู่ (ติดต่อได้)</div>
+                  <input id="address"
+                    class="w-full border-0 border-b-2 border-dotted border-slate-400 focus:outline-none focus:border-sky-400 bg-transparent py-1"
+                    placeholder="ที่อยู่ (ถ้ามี)" />
+                </div>
+
+                <div class="mt-4">
+                  <div class="text-sm font-semibold mb-2">หมายเลขบัตรประจำตัวประชาชน <span class="text-pink-500">*</span></div>
+                  <input id="idcard" maxlength="13" required
+                    class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-300"
+                    placeholder="กรอก 13 หลัก" />
+                  <p class="mt-1 text-[11px] text-slate-500">* ระบบจะนำไปใส่ในช่องเลขบัตรในใบรับรอง</p>
+                </div>
+
+                <div class="mt-4">
+                  <div class="text-sm font-semibold mb-2">ประวัติสุขภาพดังนี้ (ถ้ามี)</div>
+
+                  <div class="space-y-2 text-sm">
+                    <div class="grid md:grid-cols-[1fr,260px] gap-3 items-center">
+                      <div>1) โรคประจำตัว</div>
+                      <div class="flex items-center gap-4">
+                        <label class="inline-flex items-center gap-2">
+                          <input type="radio" name="hx1" value="no" class="accent-sky-500" checked />
+                          <span>ไม่มี</span>
+                        </label>
+                        <label class="inline-flex items-center gap-2">
+                          <input type="radio" name="hx1" value="yes" class="accent-sky-500" />
+                          <span>มี(ระบุ)</span>
+                        </label>
+                      </div>
+                    </div>
+                    <input id="hx1Detail"
+                      class="w-full border-0 border-b-2 border-dotted border-slate-300 focus:outline-none focus:border-sky-400 bg-transparent py-1"
+                      placeholder="ระบุ (ถ้ามี)" />
+
+                    <div class="grid md:grid-cols-[1fr,260px] gap-3 items-center mt-2">
+                      <div>2) อุบัติเหตุ และ/หรือ ผ่าตัด</div>
+                      <div class="flex items-center gap-4">
+                        <label class="inline-flex items-center gap-2">
+                          <input type="radio" name="hx2" value="no" class="accent-sky-500" checked />
+                          <span>ไม่มี</span>
+                        </label>
+                        <label class="inline-flex items-center gap-2">
+                          <input type="radio" name="hx2" value="yes" class="accent-sky-500" />
+                          <span>มี(ระบุ)</span>
+                        </label>
+                      </div>
+                    </div>
+                    <input id="hx2Detail"
+                      class="w-full border-0 border-b-2 border-dotted border-slate-300 focus:outline-none focus:border-sky-400 bg-transparent py-1"
+                      placeholder="ระบุ (ถ้ามี)" />
+
+                    <div class="grid md:grid-cols-[1fr,260px] gap-3 items-center mt-2">
+                      <div>3) เคยเข้ารับการรักษาในโรงพยาบาล</div>
+                      <div class="flex items-center gap-4">
+                        <label class="inline-flex items-center gap-2">
+                          <input type="radio" name="hx3" value="no" class="accent-sky-500" checked />
+                          <span>ไม่มี</span>
+                        </label>
+                        <label class="inline-flex items-center gap-2">
+                          <input type="radio" name="hx3" value="yes" class="accent-sky-500" />
+                          <span>มี(ระบุ)</span>
+                        </label>
+                      </div>
+                    </div>
+                    <input id="hx3Detail"
+                      class="w-full border-0 border-b-2 border-dotted border-slate-300 focus:outline-none focus:border-sky-400 bg-transparent py-1"
+                      placeholder="ระบุ (ถ้ามี)" />
+
+                    <div class="mt-2">4) ประวัติอื่นที่สำคัญ</div>
+                    <input id="hx4Detail"
+                      class="w-full border-0 border-b-2 border-dotted border-slate-300 focus:outline-none focus:border-sky-400 bg-transparent py-1"
+                      placeholder="ระบุ (ถ้ามี)" />
+                  </div>
+                </div>
+
+                <div class="mt-4">
+                  <div class="text-sm font-semibold mb-2">อาการ / เหตุผลที่ขอใบรับรอง <span class="text-pink-500">*</span></div>
+                  <textarea id="symptoms" rows="4" required
+                    class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-300"
+                    placeholder="เช่น มีไข้ ไอ เจ็บคอ ต้องการใบรับรองเพื่อใช้ยื่นลางาน / ลาเรียน"></textarea>
+                </div>
+
+                <div class="mt-4 grid md:grid-cols-3 gap-3 text-sm">
+                  <div class="md:col-span-2 flex items-center gap-2">
+                    <span class="font-semibold">ลงชื่อ</span>
+                    <span class="flex-1 mini-dot"></span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold">วันที่</span>
+                    <span class="flex-1 mini-dot"></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- SECTION 2 -->
+              <div class="p-4 md:p-5">
+                <div class="font-bold text-slate-900">ส่วนที่ 2 ของแพทย์ (กรอกเพิ่มเพื่อให้ PDF ตรงช่อง)</div>
+                <p class="text-[11px] text-slate-500 mt-1">
+                  ฟิลด์ส่วนนี้ “ผู้ขอ” กรอกให้ครบจะช่วยให้ใบรับรองออกมาตรงแบบฟอร์มมากขึ้น (ถ้าไม่ทราบ ข้ามได้)
+                </p>
+
+                <div class="mt-4 grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="text-sm font-semibold">น้ำหนักตัว (กก.)</label>
+                    <input id="weightKg" type="number" min="0"
+                      class="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-300"
+                      placeholder="เช่น 60" />
+                  </div>
+                  <div>
+                    <label class="text-sm font-semibold">ความสูง (ซม.)</label>
+                    <input id="heightCm" type="number" min="0"
+                      class="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-300"
+                      placeholder="เช่น 170" />
+                  </div>
+                  <div>
+                    <label class="text-sm font-semibold">ความดันโลหิต (มม.ปรอท)</label>
+                    <input id="bloodPressure"
+                      class="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-300"
+                      placeholder="เช่น 120/80" />
+                  </div>
+                  <div>
+                    <label class="text-sm font-semibold">ชีพจร (ครั้ง/นาที)</label>
+                    <input id="pulse" type="number" min="0"
+                      class="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-300"
+                      placeholder="เช่น 72" />
+                  </div>
+                </div>
+
+                <div class="mt-4">
+                  <div class="text-sm font-semibold mb-2">สภาพร่างกายทั่วไป</div>
+                  <div class="flex flex-wrap items-center gap-4 text-sm">
+                    <label class="inline-flex items-center gap-2">
+                      <input type="radio" name="generalCondition" value="normal" class="accent-emerald-500" checked />
+                      <span>ปกติ</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2">
+                      <input type="radio" name="generalCondition" value="abnormal" class="accent-rose-500" />
+                      <span>ผิดปกติ(ระบุ)</span>
+                    </label>
+                    <input id="generalConditionNote"
+                      class="flex-1 min-w-[220px] border-0 border-b-2 border-dotted border-slate-300 focus:outline-none focus:border-sky-400 bg-transparent py-1"
+                      placeholder="ระบุ (ถ้ามี)" />
+                  </div>
+                </div>
+
+                <div class="mt-4 grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="text-sm font-semibold">อีเมลสำหรับรับลิงก์ดาวน์โหลด (ถ้ามี)</label>
+                    <input id="email" type="email"
+                      class="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-300"
+                      placeholder="เช่น you@example.com" />
+                  </div>
+                  <div>
+                    <label class="text-sm font-semibold">เบอร์โทรศัพท์ติดต่อ</label>
+                    <input id="phone" type="tel"
+                      class="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-300"
+                      placeholder="เช่น 0812345678" />
+                  </div>
+                </div>
+
+                <div class="mt-4">
+                  <label class="text-sm font-semibold">ประเภทผู้ป่วย</label>
+                  <select id="patientType"
+                    class="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-300">
+                    <option value="">-- กรุณาเลือก --</option>
+                    <option value="ผู้ป่วยนอก">ผู้ป่วยนอก</option>
+                    <option value="ผู้ป่วยใน">ผู้ป่วยใน</option>
+                    <option value="อื่น ๆ">อื่น ๆ</option>
+                  </select>
+                </div>
+
+                <!-- PDPA Note -->
+                <div class="mt-4 rounded-xl border border-sky-100 bg-sky-50/70 px-3 py-2.5 text-xs text-slate-600">
+                  <p class="font-semibold text-slate-700 mb-1">การใช้ข้อมูลส่วนบุคคล (PDPA)</p>
+                  <p>
+                    ข้อมูลของคุณจะถูกใช้เพื่อการออกใบรับรองแพทย์เท่านั้น
+                    และจะถูกเก็บรักษาไว้ในระบบ MedEase ตามนโยบายของคลินิก/โรงพยาบาล
+                  </p>
+                </div>
+
+                <div id="statusBox" class="mt-4 text-sm text-center text-slate-500"></div>
+              </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="mt-6 flex flex-col sm:flex-row gap-3">
+              <button
+                id="submitBtn"
+                type="button"
+                class="flex-1 rounded-full bg-gradient-to-r from-sky-400 via-cyan-400 to-emerald-400 py-3 text-sm font-semibold text-white shadow hover:brightness-105 active:scale-[0.99] transition"
+              >
+                ส่งคำร้องขอใบรับรองแพทย์
+              </button>
+              <a
+                href="/index.html"
+                class="sm:w-[200px] text-center rounded-full border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                ยกเลิก/กลับหน้าแรก
+              </a>
+            </div>
+
+            <p class="mt-3 text-center text-[11px] text-slate-400">
+              หากส่งไม่สำเร็จ แนะนำให้เปิดหน้านี้จากแอป LINE อีกครั้ง
+            </p>
+          </div>
+        </div>
+
+        <!-- RIGHT: Helper card -->
+        <aside class="lg:sticky lg:top-20 space-y-4">
+          <div class="paper rounded-2xl p-5">
+            <div class="flex items-center gap-3">
+              <img src="Arisa.png" alt="Arisa" class="w-10 h-10 rounded-full object-contain shadow" />
+              <div class="leading-tight">
+                <p class="text-xs text-slate-500">Arisa • MedEase</p>
+                <p class="text-sm font-semibold">อาริศาช่วยกรอกฟอร์มนี้ได้ค่ะ 💚</p>
+              </div>
+            </div>
+
+            <div class="mt-4 text-sm text-slate-600 space-y-2">
+              <p>
+                ✅ ช่องที่มี <span class="text-pink-500 font-semibold">*</span> จำเป็นต้องกรอก
+              </p>
+              <p>
+                ✅ ถ้ากรอกข้อมูลส่วนที่ 2 เพิ่ม จะช่วยให้ PDF ออกมาตรงแบบมากขึ้น
+              </p>
+              <p>
+                ✅ หลังส่งคำร้อง สถานะจะเป็น “รอแพทย์ตรวจสอบ”
+              </p>
+            </div>
+          </div>
+
+          <div class="paper rounded-2xl p-5 text-xs text-slate-600">
+            <p class="font-semibold text-slate-900 mb-1">หมายเหตุ</p>
+            <ul class="space-y-1 list-disc list-inside">
+              <li>แนะนำเปิดผ่าน LINE (LIFF) เพื่อดึงข้อมูลผู้ใช้ได้</li>
+              <li>แพทย์/แอดมินจะเป็นผู้ตรวจและอนุมัติ</li>
+            </ul>
+          </div>
+        </aside>
+
+      </div>
+    </section>
+
+    <!-- hidden form wrapper (คง id เดิมเพื่อไม่ให้ JS หลุด) -->
+    <form id="certForm" class="hidden"></form>
+  </main>
+
+  <script>
+    // 🌐 ชี้ไปที่เซิร์ฟเวอร์ Node/Express (จาก ngrok)
+    const API_BASE = "https://semimechanical-subovoid-hue.ngrok-free.dev";
+
+    // ใช้ LIFF ID จริงของโปรเจกต์ MedEase
+    const LIFF_ID = "2007195940-B1XmWkLD";
+
+    let globalLineUserId = null;
+    let globalDisplayName = null;
+
+    function getLineUserIdFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const idFromUrl = params.get("lineUserId");
+      console.log("[CERT_FORM] lineUserIdFromUrl =", idFromUrl);
+      return idFromUrl;
+    }
+
+    async function resolveLineUserId() {
+      const fromUrl = getLineUserIdFromUrl();
+      if (fromUrl) return fromUrl;
+
+      try {
+        await liff.init({ liffId: LIFF_ID });
+
+        if (!liff.isLoggedIn()) {
+          console.warn("[CERT_FORM] not logged in, redirecting to LINE login");
+          liff.login();
+          return null;
+        }
+
+        const profile = await liff.getProfile();
+        globalDisplayName = profile.displayName || null;
+        console.log("[CERT_FORM] lineUserId from LIFF profile =", profile.userId);
+        return profile.userId || null;
+      } catch (err) {
+        console.error("[CERT_FORM] resolveLineUserId error:", err);
+        return null;
+      }
+    }
+
+    function getRadio(name) {
+      const el = document.querySelector(`input[name="${name}"]:checked`);
+      return el ? el.value : null;
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const btn = document.getElementById("submitBtn");
+      const statusBox = document.getElementById("statusBox");
+
+      globalLineUserId = await resolveLineUserId();
+      console.log("[CERT_FORM] lineUserId used =", globalLineUserId);
+      console.log("[CERT_FORM] displayName used =", globalDisplayName);
+
+      btn.addEventListener("click", async () => {
+        if (!globalLineUserId) {
+          statusBox.textContent = "ไม่พบข้อมูลผู้ใช้จาก LINE กรุณาเปิดจากแอป LINE อีกครั้ง";
+          statusBox.className = "mt-4 text-sm text-center text-rose-600";
+          return;
+        }
+
+        const fullName = document.getElementById("fullName").value.trim();
+        const idcard = document.getElementById("idcard").value.trim();
+        const address = document.getElementById("address").value.trim() || null;
+
+        const email = document.getElementById("email").value.trim() || null;
+        const phone = document.getElementById("phone").value.trim() || null;
+        const patientType = document.getElementById("patientType").value || null;
+
+        const symptoms = document.getElementById("symptoms").value.trim();
+
+        // extra fields for better PDF mapping
+        const hx1 = getRadio("hx1");
+        const hx2 = getRadio("hx2");
+        const hx3 = getRadio("hx3");
+        const hx1Detail = document.getElementById("hx1Detail").value.trim() || null;
+        const hx2Detail = document.getElementById("hx2Detail").value.trim() || null;
+        const hx3Detail = document.getElementById("hx3Detail").value.trim() || null;
+        const hx4Detail = document.getElementById("hx4Detail").value.trim() || null;
+
+        const weightKg = document.getElementById("weightKg").value ? Number(document.getElementById("weightKg").value) : null;
+        const heightCm = document.getElementById("heightCm").value ? Number(document.getElementById("heightCm").value) : null;
+        const bloodPressure = document.getElementById("bloodPressure").value.trim() || null;
+        const pulse = document.getElementById("pulse").value ? Number(document.getElementById("pulse").value) : null;
+
+        const generalCondition = getRadio("generalCondition") || "normal";
+        const generalConditionNote = document.getElementById("generalConditionNote").value.trim() || null;
+
+        if (!fullName || !idcard || !symptoms) {
+          statusBox.textContent = "กรุณากรอกข้อมูลที่มี * ให้ครบถ้วน";
+          statusBox.className = "mt-4 text-sm text-center text-rose-600";
+          return;
+        }
+
+        if (!/^\d{13}$/.test(idcard)) {
+          statusBox.textContent = "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก";
+          statusBox.className = "mt-4 text-sm text-center text-rose-600";
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "กำลังส่งคำร้อง...";
+        statusBox.textContent = "";
+        statusBox.className = "mt-4 text-sm text-center text-slate-500";
+
+        try {
+          const res = await fetch(`${API_BASE}/certificates/request`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              lineUserId: globalLineUserId,
+              displayName: globalDisplayName,
+
+              fullName,
+              idcard,
+              address,
+
+              email,
+              phone,
+              patientType,
+              symptoms,
+
+              healthHistory: {
+                hx1, hx1Detail,
+                hx2, hx2Detail,
+                hx3, hx3Detail,
+                hx4Detail,
+              },
+
+              vitals: {
+                weightKg,
+                heightCm,
+                bloodPressure,
+                pulse,
+                generalCondition,
+                generalConditionNote,
+              },
+            }),
+          });
+
+          if (!res.ok) throw new Error("HTTP " + res.status);
+
+          const data = await res.json();
+
+          if (data.ok) {
+            statusBox.className = "mt-4 text-sm text-center text-emerald-600 font-semibold";
+            statusBox.textContent = "ส่งคำร้องเรียบร้อยแล้ว รอแพทย์ตรวจสอบและอนุมัติค่ะ ✅";
+          } else {
+            statusBox.className = "mt-4 text-sm text-center text-rose-600";
+            statusBox.textContent = "เกิดข้อผิดพลาด: " + (data.error || "ไม่สามารถส่งคำร้องได้");
+          }
+        } catch (err) {
+          console.error(err);
+          statusBox.className = "mt-4 text-sm text-center text-rose-600";
+          statusBox.textContent = "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์";
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "ส่งคำร้องขอใบรับรองแพทย์";
+        }
+      });
+    });
+  </script>
+</body>
+</html>

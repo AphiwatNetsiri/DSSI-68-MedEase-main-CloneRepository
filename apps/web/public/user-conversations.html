@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>MedEase – บทสนทนาของผู้ใช้</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- Custom CSS (เดิม) -->
+  <link rel="stylesheet" href="/css/messages.css" />
+
+  <style>
+    body { font-family: 'Sarabun', system-ui, sans-serif; }
+
+    /* ให้โทน/พื้นหลังใกล้ index.html */
+    .hero-bg {
+      background:
+        radial-gradient(circle at 0% 0%, #ffe4f3 0, transparent 55%),
+        radial-gradient(circle at 100% 0%, #dbeafe 0, transparent 55%),
+        radial-gradient(circle at 50% 120%, #dcfce7 0, #f8fafc 60%);
+      min-height: 100vh;
+    }
+
+    /* เงานุ่ม ๆ */
+    .soft-shadow {
+      box-shadow: 0 10px 30px rgba(2, 132, 199, 0.08);
+    }
+  </style>
+</head>
+
+<body class="hero-bg text-slate-800" data-page="user-conversations">
+  <div class="min-h-screen flex flex-col">
+    <!-- Top bar (sticky + glass) -->
+    <header class="sticky top-0 z-50 border-b border-white/60 bg-white/75 backdrop-blur">
+      <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <a href="/index.html" class="shrink-0 inline-flex items-center gap-2">
+            <img src="Arisa.png" alt="MedEase Logo" class="w-9 h-9 rounded-full object-contain shadow-sm" />
+            <div class="leading-tight">
+              <p class="text-xs text-pink-400 font-semibold">MedEase</p>
+              <h1 class="text-base md:text-lg font-semibold text-slate-900 truncate">
+                บทสนทนากับ MedEase
+              </h1>
+            </div>
+          </a>
+        </div>
+
+        <div class="text-right shrink-0">
+          <p id="ucCurrentUserEmail" class="text-xs md:text-sm text-slate-700 font-medium"></p>
+          <span
+            id="ucRoleBadge"
+            class="hidden mt-1 inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700 border border-sky-100"
+          >
+            Admin / Staff
+          </span>
+        </div>
+      </div>
+
+      <!-- Subheader hint -->
+      <div class="max-w-5xl mx-auto px-4 pb-3">
+        <p class="text-xs md:text-sm text-slate-500">
+          ดูประวัติแชทของคุณ / ผู้ใช้ที่เลือก
+        </p>
+      </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="flex-1">
+      <div class="max-w-5xl mx-auto px-4 py-4 md:py-6 space-y-4 md:space-y-6">
+        <!-- Target user info -->
+        <section class="rounded-2xl bg-white/80 soft-shadow border border-white/60 p-4 md:p-5">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-xs font-semibold text-slate-500">กำลังดูบทสนทนาของ</p>
+              <h2 id="ucTargetUserName" class="text-base md:text-lg font-semibold text-slate-900 truncate">
+                -
+              </h2>
+              <p id="ucTargetUserMeta" class="text-xs text-slate-500 mt-1"></p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                id="ucExportUserJsonlBtn"
+                class="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs md:text-sm font-semibold text-slate-700 hover:bg-slate-50 active:scale-[0.99] transition"
+              >
+                Export ทั้งหมด (JSONL)
+              </button>
+              <button
+                id="ucExportUserCsvBtn"
+                class="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs md:text-sm font-semibold text-slate-700 hover:bg-slate-50 active:scale-[0.99] transition"
+              >
+                Export ทั้งหมด (CSV)
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Filters -->
+        <section class="rounded-2xl bg-white/80 soft-shadow border border-white/60 p-4 md:p-5">
+          <div class="flex flex-col md:flex-row md:items-end gap-3 md:gap-4">
+            <div class="flex-1">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">
+                ค้นหาบทสนทนา (ชื่อ / ข้อความล่าสุด)
+              </label>
+              <input
+                id="ucSearchInput"
+                type="text"
+                placeholder="เช่น นัดหมาย, ขอใบรับรองแพทย์, Arisa"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
+              />
+            </div>
+
+            <div class="grid grid-cols-2 md:flex md:flex-col gap-3 md:gap-2">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">
+                  วันที่สร้าง ตั้งแต่
+                </label>
+                <input
+                  id="ucCreatedFrom"
+                  type="date"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">
+                  ถึง
+                </label>
+                <input
+                  id="ucCreatedTo"
+                  type="date"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 flex items-center justify-between gap-3">
+            <p id="ucStatusText" class="text-xs text-slate-500"></p>
+            <a
+              href="/index.html"
+              class="text-xs font-semibold text-sky-600 hover:text-sky-700"
+              aria-label="กลับหน้าแรก"
+            >
+              กลับหน้าแรก →
+            </a>
+          </div>
+        </section>
+
+        <!-- Conversation list -->
+        <section class="rounded-2xl bg-white/90 soft-shadow border border-white/60 overflow-hidden">
+          <div class="border-b border-slate-100/80 px-4 py-3 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-slate-800">
+              รายการบทสนทนา
+            </h2>
+            <span id="ucConversationsCount" class="text-[11px] text-slate-500"></span>
+          </div>
+
+          <div id="ucLoadingState" class="px-4 py-8 text-center text-sm text-slate-500">
+            กำลังโหลดบทสนทนา...
+          </div>
+
+          <div id="ucEmptyState" class="hidden px-4 py-8 text-center text-sm text-slate-500">
+            ยังไม่มีบทสนทนา
+          </div>
+
+          <ul id="ucConversationsList" class="divide-y divide-slate-100 bg-white"></ul>
+        </section>
+
+        <!-- Footer hint -->
+        <div class="pb-6 text-center text-[11px] text-slate-500">
+          MedEase • Arisa • Conversations
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Firebase + Logic (เดิม) -->
+  <script type="module" src="/js/messages.js"></script>
+</body>
+</html>

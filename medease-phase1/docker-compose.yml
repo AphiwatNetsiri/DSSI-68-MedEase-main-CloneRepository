@@ -1,0 +1,80 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: medease-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Asia/Bangkok
+    ports:
+      - "5432:5432"
+    volumes:
+      - medease_pgdata:/var/lib/postgresql/data
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: medease-qdrant
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Bangkok
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - medease_qdrant:/qdrant/storage
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: medease-n8n
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - qdrant
+    ports:
+      - "5678:5678"
+
+    # ✅ ให้มั่นใจว่าอ่าน .env แน่นอน
+    env_file:
+      - .env
+
+    environment:
+      # DB -> Postgres
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      LLM_PROVIDER: ${LLM_PROVIDER}
+
+      # n8n core
+      N8N_HOST: ${N8N_HOST}
+      N8N_PORT: ${N8N_PORT}
+      N8N_PROTOCOL: ${N8N_PROTOCOL}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE}
+      TZ: Asia/Bangkok
+
+      # ✅ OpenAI key สำหรับทำ RAG ใน n8n
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+      # ให้ webhook/test ใช้ URL local ได้ตรง ๆ (เดโม่)
+      WEBHOOK_URL: http://localhost:5678
+
+      # (แนะนำ) ปิด diagnostics ตอนเดโม่/งานจริง
+      N8N_DIAGNOSTICS_ENABLED: "false"
+
+    volumes:
+      - medease_n8n:/home/node/.n8n
+      # ✅ เอาไฟล์ KB/เอกสารไว้ตรงนี้ เพื่อ Read Binary File ได้
+      - ./files:/files
+
+volumes:
+  medease_pgdata:
+  medease_qdrant:
+  medease_n8n:

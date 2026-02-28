@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MedEase – LIFF Launcher</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 24px; }
+      .card { max-width: 560px; margin: 0 auto; border: 1px solid #eee; border-radius: 16px; padding: 18px; }
+      .btn { display: inline-block; padding: 10px 14px; border-radius: 12px; background: #06c755; color: #fff; text-decoration: none; font-weight: 700; }
+      .muted { color: #666; font-size: 13px; line-height: 1.5; }
+      .title { font-size: 18px; font-weight: 800; margin: 0 0 6px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <p class="title">กำลังเปิด MedEase…</p>
+      <p id="msg" class="muted">กำลังตรวจสอบการเข้าสู่ระบบ LINE…</p>
+      <div style="margin-top:12px">
+        <a id="openInLine" class="btn" href="#" style="display:none">เปิดในแอป LINE</a>
+      </div>
+      <p class="muted" style="margin-top:14px">
+        หน้านี้ทำหน้าที่เป็น “Launcher” เพื่อพาไปหน้าเป้าหมาย (appointment / certificate) ผ่าน <code>liff.state</code>
+      </p>
+    </div>
+
+    <script>
+      // ✅ LIFF_ID ตัวเดียวของโปรเจกต์ (อัปเดตให้ตรงกับ LIFF ที่สร้าง/ใช้งานอยู่)
+      // จากหน้าคอนโซลที่คุณส่ง: 2008013812-uHKwkjwz
+      const LIFF_ID = "2008013812-uHKwkjwz";
+
+      function deepDecode(v, max = 6) {
+        let cur = v;
+        for (let i = 0; i < max; i++) {
+          try {
+            const next = decodeURIComponent(cur);
+            if (next === cur) break;
+            cur = next;
+          } catch {
+            break;
+          }
+        }
+        return cur;
+      }
+
+      // คืน path เป้าหมายจาก liff.state (เช่น /appointment.html?... หรือ /requestCertificate-full.html?... )
+      function getTargetFromQueryString() {
+        const qs = new URLSearchParams(location.search);
+        const raw = qs.get("liff.state");
+        const state = raw ? deepDecode(raw) : "";
+        let target = state || "/appointment.html";
+
+        // ป้องกัน open-redirect: อนุญาตเฉพาะ path ภายในโดเมนเรา
+        if (/^https?:\/\//i.test(target)) target = "/appointment.html";
+        if (!target.startsWith("/")) target = "/" + target;
+        return target;
+      }
+
+      async function main() {
+        const msg = document.getElementById("msg");
+        const openBtn = document.getElementById("openInLine");
+        const target = getTargetFromQueryString();
+
+        // ถ้าไม่ได้อยู่ใน LINE client ให้โชว์ปุ่มเปิดใน LINE
+        try {
+          await liff.init({ liffId: LIFF_ID });
+
+          if (!liff.isInClient()) {
+            msg.textContent = "กรุณาเปิดลิงก์นี้จากแอป LINE เพื่อใช้งาน MedEase";
+            openBtn.style.display = "inline-block";
+            openBtn.href = `https://liff.line.me/${LIFF_ID}?liff.state=${encodeURIComponent(target)}`;
+            return;
+          }
+
+          // ถ้ายังไม่ login → login ก่อน แล้วกลับมาที่ launcher อีกครั้ง
+          if (!liff.isLoggedIn()) {
+            msg.textContent = "กำลังพาไปล็อกอิน LINE…";
+            liff.login({ redirectUri: location.origin + location.pathname + location.search });
+            return;
+          }
+
+          // ล็อกอินแล้ว → แนบ lineUserId/displayName ไปกับปลายทาง
+          msg.textContent = "ล็อกอินแล้ว กำลังไปหน้าปลายทาง…";
+
+          let lineUserId = "";
+          let displayName = "";
+          try {
+            const profile = await liff.getProfile();
+            lineUserId = profile?.userId || "";
+            displayName = profile?.displayName || "";
+          } catch {}
+
+          // รวม query เดิมของปลายทาง + เติม lineUserId/displayName (ถ้ายังไม่มี)
+          const url = new URL(target, location.origin);
+          if (lineUserId && !url.searchParams.get("lineUserId")) url.searchParams.set("lineUserId", lineUserId);
+          if (displayName && !url.searchParams.get("displayName")) url.searchParams.set("displayName", displayName);
+
+          location.replace(url.toString());
+        } catch (err) {
+          console.error(err);
+          msg.textContent = "เกิดข้อผิดพลาดในการเปิด LIFF (ตรวจสอบ LIFF_ID / Endpoint URL)";
+          openBtn.style.display = "inline-block";
+          openBtn.href = `https://liff.line.me/${LIFF_ID}?liff.state=${encodeURIComponent(target)}`;
+        }
+      }
+
+      main();
+    </script>
+  </body>
+</html>
