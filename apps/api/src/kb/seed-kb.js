@@ -15,6 +15,29 @@ import fs from "fs";
 import path from "path";
 import admin from "firebase-admin";
 import { fileURLToPath } from "url";
+function isValidEmbedding(vec, expectedDim = 768) {
+  if (!Array.isArray(vec)) return false;
+  if (vec.length !== expectedDim) return false;
+  // quick sanity: must be numbers
+  for (let i = 0; i < Math.min(vec.length, 8); i++) {
+    if (typeof vec[i] !== "number" || Number.isNaN(vec[i])) return false;
+  }
+  return true;
+}
+
+// Firestore Vector Search requires VectorValue (vector<dim>).
+// Admin SDK may expose FieldValue.vector() (newer SDK). If unavailable, fall back to array.
+// NOTE: If you store as array, findNearest() may return 0 hits even though embeddings exist.
+function toFirestoreVector(vec) {
+  try {
+    const fv = admin?.firestore?.FieldValue;
+    if (fv && typeof fv.vector === "function") {
+      return fv.vector(vec);
+    }
+  } catch {}
+  return vec; // fallback (legacy)
+}
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -357,7 +380,21 @@ async function seed() {
       const docId = `${ARISA_KB_VERSION}__${item.id || "item"}__${String(ci).padStart(3, "0")}`;
       const ref = db.collection(ARISA_KB_COLLECTION).doc(docId);
 
-      const payload = {
+const embeddingValue = isValidEmbedding(embedding, ARISA_EMBED_DIM)
+  ? toFirestoreVector(embedding)
+  : null;
+
+if (!embeddingValue) {
+  console.warn("[SEED] skip chunk (invalid embedding)", {
+    id,
+    title: item.title || "",
+    dim: Array.isArray(embedding) ? embedding.length : null,
+    provider: embeddingProvider,
+  });
+  continue;
+}
+
+const payload = {
         kbVersion: ARISA_KB_VERSION,
         sourceId: item.id || null,
         topic: item.topic || "",
@@ -371,7 +408,7 @@ async function seed() {
         text,
         textPreview: clampStr(text, 220),
         embeddingProvider,
-        embedding,
+        embedding: embeddingValue,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
